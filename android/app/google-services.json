@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "317687385872",
+    "project_id": "nileassist-f1752",
+    "storage_bucket": "nileassist-f1752.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:317687385872:android:c6eaf5143b8b5b99589f95",
+        "android_client_info": {
+          "package_name": "com.example.nileassist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCS1H_jbj_otUhRR4t4NQCPuozy4zsOGEQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
