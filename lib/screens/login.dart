@@ -14,8 +14,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final Color primaryBlue = const Color(0xFF1E3DD3);
-  final Color greenButton = const Color(0xFF8BC34A);
+  static const Color primaryBlue = Color(0xFF1E3DD3);
+  static const Color greenButton = Color(0xFF8BC34A);
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController(); 
@@ -146,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                   'assets/images/logo-removebg-preview.png',
                   height: 150,
                   errorBuilder: (context, error, stackTrace) => 
-                      const Icon(Icons.school, size: 90, color: Colors.blue),
+                      const Icon(Icons.school, size: 90, color: primaryBlue),
                 ),
               ),
 
