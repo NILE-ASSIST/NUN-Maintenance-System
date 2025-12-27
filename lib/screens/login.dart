@@ -144,7 +144,7 @@ class _LoginPageState extends State<LoginPage> {
               Center(
                 child: Image.asset(
                   'assets/images/logo-removebg-preview.png',
-                  height: 90,
+                  height: 150,
                   errorBuilder: (context, error, stackTrace) => 
                       const Icon(Icons.school, size: 90, color: Colors.blue),
                 ),
