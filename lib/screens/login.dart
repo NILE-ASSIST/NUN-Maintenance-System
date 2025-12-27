@@ -35,7 +35,6 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // --- SIMPLIFIED NAVIGATION LOGIC (IF-ELSE) ---
   void _navigateBasedOnRole(String role) {
     // Navigate to the correct dashboard based on the role string
     if (role == 'admin') {
@@ -67,7 +66,7 @@ class _LoginPageState extends State<LoginPage> {
 
   // --- MAIN AUTH LOGIC ---
   Future<void> _handleSubmit() async {
-    // 1. Basic Input Validation
+    //Input Validation
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -75,7 +74,6 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // 2. Signup Specific Validation
     if (!isLogin) {
       if (_nameController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -95,9 +93,6 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       if (isLogin) {
-        // ===========================
-        // LOGIN FLOW
-        // ===========================
         final userData = await _authService.loginUser(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
@@ -107,24 +102,20 @@ class _LoginPageState extends State<LoginPage> {
         _navigateBasedOnRole(userData['role']);
 
       } else {
-        // ===========================
-        // REGISTER FLOW (AUTO-LOGIN)
-        // ===========================
         
-        // 1. Create the user in Firebase
+        //Create the user in Firebase
         await _authService.registerUser(
           fullName: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // 2. Detect the role locally so we know where to send them immediately
-        // (Since registerUser succeeded, we know the email format is valid)
+        // Detect the role locally so we know where to send them immediately
         String role = _authService.detectUserRole(_emailController.text.trim());
 
         if (!mounted) return;
         
-        // 3. Navigate directly to dashboard instead of asking to login
+        //Navigate directly to dashboard instead of asking to login
         _navigateBasedOnRole(role);
       }
     } catch (e) {
