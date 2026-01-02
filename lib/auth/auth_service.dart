@@ -25,15 +25,19 @@ class AuthService {
   String detectUserRole(String email) {
     email = email.toLowerCase();
 
+    //testing email verification using real gmail address
+
+    if(email == 'sundayamangijnr@gmail.com'){
+      return 'admin';
+    }
+
     if (adminRegex.hasMatch(email)) return 'admin';
     if (facilityManagerRegex.hasMatch(email)) return 'facility_manager';
     if (hostelSupervisorRegex.hasMatch(email)) return 'hostel_supervisor';
     if (maintenanceRegex.hasMatch(email)) return 'maintenance';
     if (lecturerRegex.hasMatch(email)) return 'lecturer';
 
-    // If none match (assuming everyone else is a Student)
-    // You can either return 'student' or throw an error if you strictly enforce roles.
-    // For now, I'll return 'student' as a fallback if strict regex isn't met but domain is valid.
+    
     if (email.endsWith('@nileuniversity.edu.ng')) {
       return 'student';
     }
@@ -44,10 +48,7 @@ class AuthService {
     );
   }
 
-  // =========================
-  // HELPER: GET COLLECTION NAME
-  // =========================
-  // Maps the single role string to the database collection name
+  //get collection name based on the user role
   String getCollectionName(String role) {
     switch (role) {
       case 'admin':
@@ -80,11 +81,11 @@ class AuthService {
       throw Exception('Password must be at least 6 characters');
     }
 
-    //Detect Role and Collection
+    //detect role and collection
     final String role = detectUserRole(email);
     final String collectionName = getCollectionName(role);
 
-    //Create Firebase Auth Account
+    //create Firebase Auth Account
     UserCredential credential =
         await _auth.createUserWithEmailAndPassword(
       email: email,
@@ -93,7 +94,7 @@ class AuthService {
 
     User user = credential.user!;
 
-    // save User Profile in Specific Collection
+    // save user Profile in specific collection
     // Instead of 'users', we use 'admins', 'lecturers', etc.
     await _firestore.collection(collectionName).doc(user.uid).set({
       'uid': user.uid,
@@ -103,7 +104,14 @@ class AuthService {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    return user;
+    // return user;
+  try {
+      await user.sendEmailVerification();
+    } catch (e) {
+      //if email fails to send, delete create user
+      await user.delete();
+      throw Exception("Failed to send verification email: $e");
+    }
   }
 
   
@@ -120,12 +128,16 @@ class AuthService {
 
     User user = credential.user!;
 
-    //Determine where to look for the user data
+    if (!user.emailVerified) {
+      await _auth.signOut();
+      throw Exception('Email not verified. Please check your inbox.');
+    }
+
+    //checks where to look for the user data
     
     final String role = detectUserRole(user.email!);
     final String collectionName = getCollectionName(role);
 
-    //Fetch User Profile from that specific collection
     DocumentSnapshot userDoc =
         await _firestore.collection(collectionName).doc(user.uid).get();
 
@@ -133,7 +145,7 @@ class AuthService {
       throw Exception('User profile not found in $collectionName collection.');
     }
 
-    // Return Data
+    // user data to return
     return {
       'uid': user.uid,
       'email': user.email,
@@ -142,9 +154,17 @@ class AuthService {
     };
   }
 
-  // =========================
-  // LOGOUT
-  // =========================
+Future<void> resendVerificationEmail(String email, String password) async {
+    UserCredential credential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    if (!credential.user!.emailVerified) {
+      await credential.user!.sendEmailVerification();
+      await _auth.signOut();
+    }
+  }
+  
   Future<void> logout() async {
     await _auth.signOut();
   }

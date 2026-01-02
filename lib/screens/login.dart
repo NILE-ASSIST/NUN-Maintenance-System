@@ -5,6 +5,7 @@ import 'package:nileassist/screens/facilitymanager.dart';
 import 'package:nileassist/screens/hostelSupervisor.dart';
 import 'package:nileassist/screens/lecturer.dart';
 import 'package:nileassist/screens/maintenance.dart';
+// import 'package:nileassist/screens/student.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,37 +37,29 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _navigateBasedOnRole(String role) {
-    // Navigate to the correct dashboard based on the role string
     if (role == 'admin') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
-      print("Navigating to Admin Dashboard");
     } 
     else if (role == 'lecturer') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LecturerDashboard()));
-      print("Navigating to Lecturer Dashboard");
     } 
     else if (role == 'facility_manager') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FMDashboard()));
-      print("Navigating to Facility Manager Dashboard");
     } 
     else if (role == 'hostel_supervisor') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HSDashboard()));
-      print("Navigating to Hostel Supervisor Dashboard");
     } 
     else if (role == 'maintenance') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MaintenanceDashboard()));
-      print("Navigating to Maintenance Dashboard");
     } 
+    
     else {
-      // Fallback for unknown roles (or students if they don't have a specific regex)
+      // Fallback
       // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentDashboard()));
-      print("Navigating to Student/Default Dashboard");
     }
   }
 
-  // --- MAIN AUTH LOGIC ---
   Future<void> _handleSubmit() async {
-    //Input Validation
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -102,26 +95,49 @@ class _LoginPageState extends State<LoginPage> {
         _navigateBasedOnRole(userData['role']);
 
       } else {
-        
-        //Create the user in Firebase
+       
+
         await _authService.registerUser(
           fullName: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // Detect the role locally so we know where to send them immediately
-        String role = _authService.detectUserRole(_emailController.text.trim());
-
         if (!mounted) return;
-        
-        //Navigate directly to dashboard instead of asking to login
-        _navigateBasedOnRole(role);
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Verify your Email"),
+            content: Text(
+              "A verification link has been sent to ${_emailController.text}.\n\nPlease check your inbox (and spam) and verify your email before logging in."
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  setState(() {
+                    isLogin = true; // Switch back to login mode automatically
+                    _passwordController.clear();
+                    _confirmPasswordController.clear();
+                  });
+                },
+                child: const Text("OK"),
+              )
+            ],
+          ),
+        );
       }
     } catch (e) {
       if (!mounted) return;
+      
+      // Clean up the error message (remove "Exception: " prefix)
+      String message = e.toString().replaceAll('Exception: ', '');
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -130,7 +146,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -154,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
 
               Text(
                 isLogin ? 'Log in to your Account' : 'Create an Account',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryBlue),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryBlue),
               ),
 
               const SizedBox(height: 30),
@@ -256,7 +271,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     child: Text(
                       isLogin ? 'Create one' : 'Log in',
-                      style: TextStyle(color: primaryBlue),
+                      style: const TextStyle(color: primaryBlue),
                     ),
                   ),
                 ],
