@@ -109,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context) => AlertDialog(
             title: const Text("Verify your Email"),
             content: Text(
-              "A verification link has been sent to ${_emailController.text}.\n\nPlease check your inbox (and spam) and verify your email before logging in."
+              "A verification link has been sent to ${_emailController.text}.\n\nPlease check your inbox and spam to verify your email before logging in."
             ),
             actions: [
               TextButton(
