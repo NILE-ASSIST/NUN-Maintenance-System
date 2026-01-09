@@ -61,8 +61,6 @@ class AuthService {
         return 'hostel_supervisors';
       case 'maintenance':
         return 'maintenance';
-      case 'student':
-        return 'students';
       default:
         return 'users'; // Fallback
     }

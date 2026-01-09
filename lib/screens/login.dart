@@ -15,8 +15,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  static const Color primaryBlue = Color(0xFF1E3DD3);
-  static const Color greenButton = Color(0xFF8BC34A);
+  static const Color nileBlue = Color(0xFF1E3DD3);
+  static const Color nileGreen = Color(0xFF8BC34A);
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController(); 
@@ -26,15 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   bool isLogin = true; 
   bool isLoading = false; 
   final AuthService _authService = AuthService();
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _nameController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
-  }
+  
 
   void _navigateBasedOnRole(String role) {
     if (role == 'admin') {
@@ -109,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context) => AlertDialog(
             title: const Text("Verify your Email"),
             content: Text(
-              "A verification link has been sent to ${_emailController.text}.\n\nPlease check your inbox and spam to verify your email before logging in."
+              "A verification link has been sent to ${_emailController.text}.\n\nPlease check your inbox or spam to verify your email before logging in."
             ),
             actions: [
               TextButton(
@@ -161,7 +153,7 @@ class _LoginPageState extends State<LoginPage> {
                   'assets/images/logo-removebg-preview.png',
                   height: 150,
                   errorBuilder: (context, error, stackTrace) => 
-                      const Icon(Icons.school, size: 90, color: primaryBlue),
+                      const Icon(Icons.school, size: 90, color: nileBlue),
                 ),
               ),
 
@@ -169,7 +161,7 @@ class _LoginPageState extends State<LoginPage> {
 
               Text(
                 isLogin ? 'Log in to your Account' : 'Create an Account',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryBlue),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nileBlue),
               ),
 
               const SizedBox(height: 30),
@@ -207,6 +199,7 @@ class _LoginPageState extends State<LoginPage> {
               const Text('Password'),
               const SizedBox(height: 8),
               TextField(
+                keyboardType: TextInputType.visiblePassword,
                 controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
@@ -223,6 +216,7 @@ class _LoginPageState extends State<LoginPage> {
                 const Text('Re-enter password'),
                 const SizedBox(height: 8),
                 TextField(
+                  keyboardType: TextInputType.visiblePassword,
                   controller: _confirmPasswordController,
                   obscureText: true,
                   decoration: InputDecoration(
@@ -241,8 +235,8 @@ class _LoginPageState extends State<LoginPage> {
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: greenButton,
-                    disabledBackgroundColor: greenButton.withOpacity(0.6),
+                    backgroundColor: nileGreen,
+                    disabledBackgroundColor: nileGreen.withOpacity(0.6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: isLoading ? null : _handleSubmit,
@@ -271,7 +265,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     child: Text(
                       isLogin ? 'Create one' : 'Log in',
-                      style: const TextStyle(color: primaryBlue),
+                      style: const TextStyle(color: nileBlue),
                     ),
                   ),
                 ],
