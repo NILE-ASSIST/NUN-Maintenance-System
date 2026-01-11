@@ -40,42 +40,47 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: secondaryGrey.withOpacity(0.3), 
+                  color: secondaryGrey.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Complaint Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Complaint Overview',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 15),
-                    
-                    
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         MiniStatBox(
-                          label: 'Total', 
+                          label: 'Total',
                           staticValue: null,
                           futureValue: _controller.countTotalComplaints(),
-                          color: nileBlue
+                          color: nileBlue,
                         ),
                         MiniStatBox(
-                          label: 'Pending', 
+                          label: 'Pending',
                           staticValue: '0',
                           futureValue: _controller.countPendingComplaints(),
-                          color: Colors.orange
+                          color: Colors.orange,
                         ),
                         MiniStatBox(
-                          label: 'Resolved', 
+                          label: 'Resolved',
                           staticValue: '0',
                           futureValue: _controller.countResolvedComplaints(),
-                          color: Colors.green
+                          color: Colors.green,
                         ),
                       ],
-                    )
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -91,7 +96,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Row(
           children: [
             IconButton(
-              icon: Icon(Icons.notifications_none_outlined, color: nileBlue, size: 28),
+              icon: Icon(
+                Icons.notifications_none_outlined,
+                color: nileBlue,
+                size: 28,
+              ),
               onPressed: () {},
             ),
             const SizedBox(width: 8),
@@ -101,7 +110,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: const Icon(Icons.person, color: Colors.grey),
             ),
           ],
-        )
+        ),
       ],
     );
   }
