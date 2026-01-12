@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:nileassist/screens/maintenance.dart'; // Import your dashboard
+import 'package:nileassist/screens/maintenance.dart';
 
 class UploadProfileScreen extends StatefulWidget {
   final String userId;
@@ -20,7 +20,7 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera); // Force Camera?
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera); // force camera
     if (pickedFile != null) {
       setState(() => _imageFile = File(pickedFile.path));
     }
@@ -32,7 +32,6 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
     setState(() => _isUploading = true);
 
     try {
-      // 1. Upload to Firebase Storage
       final ref = FirebaseStorage.instance
           .ref()
           .child('profile_pictures')
@@ -43,13 +42,12 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
 
       // 2. Update Firestore Document
       await FirebaseFirestore.instance
-          .collection('maintenance') // Assuming maintenance collection
+          .collection('maintenance') 
           .doc(widget.userId)
           .update({'profilePicture': downloadUrl});
 
       if (!mounted) return;
 
-      // 3. Navigate to Dashboard
       Navigator.pushReplacement(
         context, 
         MaterialPageRoute(builder: (context) => const MaintenanceDashboard())
@@ -83,7 +81,7 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
             ),
             const SizedBox(height: 30),
             
-            // Image Preview Area
+            // image preview
             GestureDetector(
               onTap: _pickImage,
               child: CircleAvatar(
@@ -102,7 +100,6 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
             ),
             const SizedBox(height: 30),
 
-            // Submit Button
             SizedBox(
               width: double.infinity,
               height: 50,

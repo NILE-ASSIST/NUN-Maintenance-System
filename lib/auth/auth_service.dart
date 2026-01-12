@@ -30,8 +30,14 @@ class AuthService {
     if(email == 'sundayamangijnr@gmail.com'){
       return 'admin';
     }
+    if(email == 'techwithamangi@gmail.com'){
+      return 'lecturer';
+    }
     if(email == 'sundayamangi@gmail.com'){
       return 'maintenance';
+    }
+    if(email == 'amasun2005@yahoo.com'){
+      return 'hostel_supervisor';
     }
 
     if (adminRegex.hasMatch(email)) return 'admin';

@@ -10,12 +10,14 @@ class MaintenanceDashboard extends StatefulWidget {
 class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Maintenance Dashboard'),
-      ),
-      body: const Center(
-        child: Text('Welcome to the Maintenance Dashboard!'),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Maintenance Dashboard'),
+        ),
+        body: const Center(
+          child: Text('Welcome to the Maintenance Dashboard!'),
+        ),
       ),
     );
   }
