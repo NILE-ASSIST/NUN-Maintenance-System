@@ -5,6 +5,7 @@ import 'package:nileassist/screens/facilitymanager.dart';
 import 'package:nileassist/screens/hostelSupervisor.dart';
 import 'package:nileassist/screens/lecturer.dart';
 import 'package:nileassist/screens/maintenance.dart';
+import 'package:nileassist/screens/uploadprofilePicture.dart';
 // import 'package:nileassist/screens/student.dart';
 
 class LoginPage extends StatefulWidget {
@@ -28,7 +29,14 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
   
 
-  void _navigateBasedOnRole(String role) {
+  // CHANGED: Now accepts the entire 'userData' map, not just a String 'role'
+  void _navigateBasedOnRole(Map<String, dynamic> userData) {
+    String role = userData['role'];
+    String uid = userData['uid'];
+    
+    // Check if the 'profilePicture' field exists and is not empty
+    String? profilePic = userData['profilePicture']; 
+
     if (role == 'admin') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
     } 
@@ -42,14 +50,46 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HSDashboard()));
     } 
     else if (role == 'maintenance') {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MaintenanceDashboard()));
+      // === NEW SECURITY CHECK ===
+      // If they are maintenance staff but have NO picture, force them to upload one.
+      if (profilePic == null || profilePic.isEmpty) {
+        print("Maintenance user missing photo. Redirecting to upload...");
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => UploadProfileScreen(userId: uid))
+        );
+      } else {
+        // They have a picture, let them in.
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MaintenanceDashboard()));
+      }
     } 
-    
     else {
       // Fallback
       // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentDashboard()));
     }
   }
+
+  // void _navigateBasedOnRole(String role) {
+  //   if (role == 'admin') {
+  //     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
+  //   } 
+  //   else if (role == 'lecturer') {
+  //     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LecturerDashboard()));
+  //   } 
+  //   else if (role == 'facility_manager') {
+  //     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FMDashboard()));
+  //   } 
+  //   else if (role == 'hostel_supervisor') {
+  //     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HSDashboard()));
+  //   } 
+  //   else if (role == 'maintenance') {
+  //     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MaintenanceDashboard()));
+  //   } 
+  //   else {
+  //     // Fallback
+  //     // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentDashboard()));
+  //   }
+  // }
 
   Future<void> _handleSubmit() async {
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
@@ -84,7 +124,8 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         if (!mounted) return;
-        _navigateBasedOnRole(userData['role']);
+        // _navigateBasedOnRole(userData['role']);
+        _navigateBasedOnRole(userData);
 
       } else {
        

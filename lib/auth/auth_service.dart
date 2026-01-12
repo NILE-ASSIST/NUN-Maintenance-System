@@ -30,6 +30,9 @@ class AuthService {
     if(email == 'sundayamangijnr@gmail.com'){
       return 'admin';
     }
+    if(email == 'sundayamangi@gmail.com'){
+      return 'maintenance';
+    }
 
     if (adminRegex.hasMatch(email)) return 'admin';
     if (facilityManagerRegex.hasMatch(email)) return 'facility_manager';
@@ -149,6 +152,7 @@ class AuthService {
       'email': user.email,
       'role': userDoc['role'],
       'fullName': userDoc['fullName'],
+      'profilePicture': userDoc.data().toString().contains('ProfilePicture')?userDoc.get('profilePicture'):null,
     };
   }
 
