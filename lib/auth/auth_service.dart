@@ -33,9 +33,9 @@ class AuthService {
     if(email == 'techwithamangi@gmail.com'){
       return 'lecturer';
     }
-    // if(email == 'sundayamangi@gmail.com'){
-    //   return 'maintenance';
-    // }
+    if(email == 'chrisibangar@gmail.com'){
+      return 'facility_manager';
+    }
     if(email == 'amasun2005@yahoo.com'){
       return 'hostel_supervisor';
     }
