@@ -75,6 +75,42 @@ class AuthService {
     }
   }
 
+
+Future<String> _generateStaffId(String role) async {
+  String prefix = 'STF'; // Default
+  if (role == 'admin') prefix = 'ADM';
+  if (role == 'lecturer') prefix = 'LEC';
+  if (role == 'hostel_supervisor') prefix = 'HOS';
+  if (role == 'facility_manager') prefix = 'FAC';
+  if (role == 'maintenance') prefix = 'MNT';
+
+  final DocumentReference counterRef = _firestore.collection('system_metadata').doc('staff_counters');
+
+  return _firestore.runTransaction((transaction) async {
+    DocumentSnapshot snapshot = await transaction.get(counterRef);
+
+    int currentCount = 0;
+
+    if (snapshot.exists) {
+      // Get the current count for this specific role (or global if you prefer)
+      // We'll use a specific counter for each role to keep numbers small
+      currentCount = (snapshot.data() as Map<String, dynamic>)[role] ?? 0;
+    } else {
+      // If document doesn't exist, create it inside the transaction
+      transaction.set(counterRef, {role: 0});
+    }
+
+    int newCount = currentCount + 1;
+
+    // Update the counter in the database
+    transaction.update(counterRef, {role: newCount});
+
+    // Format: PRE-0000 (e.g., LEC-0005)
+    // .toString().padLeft(4, '0') ensures it is always 4 digits
+    return '$prefix-${newCount.toString().padLeft(4, '0')}';
+  });
+}
+
   Future<User?> registerUser({
     required String fullName,
     required String email,
@@ -92,6 +128,9 @@ class AuthService {
     final String role = detectUserRole(email);
     final String collectionName = getCollectionName(role);
 
+// We generate this BEFORE creating the auth user to ensure database logic works first
+    String staffId = await _generateStaffId(role);
+
     //create Firebase Auth Account
     UserCredential credential =
         await _auth.createUserWithEmailAndPassword(
@@ -105,6 +144,7 @@ class AuthService {
     // Instead of 'users', we use 'admins', 'lecturers', etc.
     await _firestore.collection(collectionName).doc(user.uid).set({
       'uid': user.uid,
+      'staffId': staffId,
       'fullName': fullName,
       'email': email.toLowerCase(),
       'role': role,
@@ -196,6 +236,7 @@ Future<void> resendVerificationEmail(String email, String password) async {
       'email': user.email,
       'role': userDoc['role'],
       'fullName': userDoc['fullName'],
+      'staffId': userDoc.data().toString().contains('staffId') ? userDoc.get('staffId') : 'Pending',
       'profilePicture': userDoc.data().toString().contains('profilePicture') ? userDoc.get('profilePicture') : null,
     };
   }

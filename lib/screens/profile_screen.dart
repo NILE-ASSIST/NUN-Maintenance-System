@@ -34,12 +34,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Column(
         children: [
           const SizedBox(height: 20),
-          // White rounded container
+
           Expanded(
             child: Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Color(0xFFF5F5F5),
+                color: Colors.white,
+                // color: Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(40),
                   topRight: Radius.circular(40),
@@ -73,19 +74,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           AuthService().logout();
                         },
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red),
+                          side: const BorderSide(color: Colors.grey),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           backgroundColor: Colors.white,
                         ),
-                        child: const Text(
-                          "Log Out",
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.logout, color: Colors.red, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              "Log Out",
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -180,40 +188,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-          _buildDetailItem("Staff ID", ""),
-          const SizedBox(height: 15),
-          _buildDetailItem("Email", widget.userData['email'] ?? ""),
-          const SizedBox(height: 15),
-          _buildDetailItem("Department", ""),
+          
+          // 1. Staff ID with Badge Icon
+          _buildDetailItem("Staff ID", widget.userData['staffId'] ?? 'Pending', Icons.badge_outlined),
+          const SizedBox(height: 20), // Increased spacing slightly for better look
+          
+          // 2. Email with Email Icon
+          _buildDetailItem("Email", widget.userData['email'] ?? "", Icons.email_outlined),
+          const SizedBox(height: 20),
+          
+          // 3. Department with Building Icon
+          _buildDetailItem("Department", "", Icons.apartment_outlined),
         ],
       ),
     );
   }
 
   // reusable widget for Staff ID
-  Widget _buildDetailItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDetailItem(String label, String value, IconData icon) {
+    return Row(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
+        Icon(icon, size: 20, color: nileBlue),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (value.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        if (value.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.black,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
       ],
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nileassist/auth/auth_service.dart';
 import 'package:nileassist/screens/admin.dart';
+import 'package:nileassist/screens/complaint_screen.dart';
 import 'package:nileassist/screens/profile_screen.dart';
 import 'package:nileassist/screens/staffdashboard.dart';
 import 'package:nileassist/screens/facilitymanager.dart';
@@ -70,7 +71,8 @@ class _MainLayoutState extends State<MainLayout> {
         onPageChanged: _onPageChanged,
         children: [
           _getHomeForRole(),           
-          const Center(child: Text("Complaints Screen")),
+          ComplaintScreen(),
+          // const Center(child: Text("Complaints Screen")),
           ProfileScreen(userData: widget.userData),
         ],
       ),
