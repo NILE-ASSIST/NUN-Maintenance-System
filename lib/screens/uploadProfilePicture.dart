@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nileassist/screens/mainLayout.dart';
 import 'package:nileassist/screens/maintenance.dart';
 
 class UploadProfileScreen extends StatefulWidget {
@@ -40,17 +41,33 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
       await ref.putFile(_imageFile!);
       String downloadUrl = await ref.getDownloadURL();
 
-      // 2. Update Firestore Document
+      // Update Firestore Document
       await FirebaseFirestore.instance
           .collection('maintenance') 
           .doc(widget.userId)
           .update({'profilePicture': downloadUrl});
 
+      // Get updated user data
+      final userDoc = await FirebaseFirestore.instance
+          .collection('maintenance')
+          .doc(widget.userId)
+          .get();
+
       if (!mounted) return;
 
       Navigator.pushReplacement(
         context, 
-        MaterialPageRoute(builder: (context) => const MaintenanceDashboard())
+        MaterialPageRoute(
+          builder: (context) => MainLayout(
+            userData: {
+              'uid': widget.userId,
+              'email': userDoc['email'],
+              'role': userDoc['role'],
+              'fullName': userDoc['fullName'],
+              'profilePicture': downloadUrl,
+            },
+          ),
+        ),
       );
 
     } catch (e) {

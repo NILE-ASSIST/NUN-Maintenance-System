@@ -33,9 +33,9 @@ class AuthService {
     if(email == 'techwithamangi@gmail.com'){
       return 'lecturer';
     }
-    if(email == 'sundayamangi@gmail.com'){
-      return 'maintenance';
-    }
+    // if(email == 'sundayamangi@gmail.com'){
+    //   return 'maintenance';
+    // }
     if(email == 'amasun2005@yahoo.com'){
       return 'hostel_supervisor';
     }
@@ -71,7 +71,7 @@ class AuthService {
       case 'maintenance':
         return 'maintenance';
       default:
-        return 'users'; // Fallback
+        return 'Unauthorised User'; // Fallback
     }
   }
 
@@ -108,12 +108,14 @@ class AuthService {
       'fullName': fullName,
       'email': email.toLowerCase(),
       'role': role,
+      'emailVerified': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
     // return user;
   try {
       await user.sendEmailVerification();
+      // DON'T sign out - keep user logged in
     } catch (e) {
       //if email fails to send, delete create user
       await user.delete();
@@ -134,11 +136,6 @@ class AuthService {
     );
 
     User user = credential.user!;
-
-    if (!user.emailVerified) {
-      await _auth.signOut();
-      throw Exception('Email not verified. Please check your inbox.');
-    }
 
     //checks where to look for the user data
     
@@ -175,5 +172,31 @@ Future<void> resendVerificationEmail(String email, String password) async {
   
   Future<void> logout() async {
     await _auth.signOut();
+  }
+
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
+    User? user = _auth.currentUser;
+    
+    if (user == null || !user.emailVerified) return null;
+    
+    final String role = detectUserRole(user.email!);
+    final String collectionName = getCollectionName(role);
+    
+    DocumentSnapshot userDoc = await _firestore.collection(collectionName).doc(user.uid).get();
+    
+    if (!userDoc.exists) return null;
+    
+    // Update Firestore verification flag
+    await _firestore.collection(collectionName).doc(user.uid).update({
+      'emailVerified': true,
+    });
+    
+    return {
+      'uid': user.uid,
+      'email': user.email,
+      'role': userDoc['role'],
+      'fullName': userDoc['fullName'],
+      'profilePicture': userDoc.data().toString().contains('profilePicture') ? userDoc.get('profilePicture') : null,
+    };
   }
 }

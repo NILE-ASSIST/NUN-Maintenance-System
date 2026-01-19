@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nileassist/screens/complaint_form.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.fullName});
@@ -104,7 +105,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ComplaintFormPage(),
+                    ),
+                  );
+                },
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                   side: const BorderSide(color: Color(0xFF243C8F)),
@@ -129,25 +137,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-        // bottomNavigationBar: BottomNavigationBar(
-        //   backgroundColor: Colors.white,
-        //   currentIndex: 0,
-        //   selectedItemColor: nileBlue,
-        //   items: const [
-        //     BottomNavigationBarItem(
-        //       icon: Icon(Icons.home_outlined),
-        //       label: "Home",
-        //     ),
-        //     BottomNavigationBarItem(
-        //       icon: Icon(Icons.confirmation_number_outlined),
-        //       label: "Complaints",
-        //     ),
-        //     BottomNavigationBarItem(
-        //       icon: Icon(Icons.person_outline),
-        //       label: "Profile",
-        //     ),
-        //   ],
-        // ),
       ),
     );
   }

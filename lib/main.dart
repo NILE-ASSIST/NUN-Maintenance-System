@@ -1,6 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:nileassist/auth/auth_service.dart';
 import 'package:nileassist/screens/login.dart';
+import 'package:nileassist/screens/mainLayout.dart';
+import 'package:nileassist/screens/verify_email_screen.dart';
+import 'package:nileassist/screens/uploadProfilePicture.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +17,9 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static const Color nileBlue = Color(0xFF1E3DD3);
+  static const Color nileGreen = Color(0xFF8BC34A);
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -19,6 +28,9 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: nileBlue,
+        ),
         // This is the theme of your application.
         //
         // TRY THIS: Try running your application with "flutter run". You'll see
@@ -34,9 +46,70 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: nileBlue),
+        // colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: LoginPage(),
+  home: StreamBuilder<User?>(
+  stream: FirebaseAuth.instance.userChanges(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!snapshot.hasData) {
+      return const LoginPage();
+    }
+
+    final user = snapshot.data!;
+
+    // Check email verification first
+    if (!user.emailVerified) {
+      return const VerifyEmailScreen();
+    }
+
+    // After email verified, check if maintenance staff needs to upload profile picture
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('maintenance')
+          .doc(user.uid)
+          .get(),
+      builder: (context, maintenanceSnapshot) {
+        if (maintenanceSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // If user is maintenance staff and has no profile picture
+        if (maintenanceSnapshot.hasData && 
+            maintenanceSnapshot.data!.exists &&
+            !maintenanceSnapshot.data!.data().toString().contains('profilePicture')) {
+          return UploadProfileScreen(userId: user.uid);
+        }
+
+        // if all validation is correct, load user data and show dashboard
+        return FutureBuilder<Map<String, dynamic>?>(
+          future: AuthService().getCurrentUserData(),
+          builder: (context, dataSnapshot) {
+            if (dataSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            
+            if (!dataSnapshot.hasData) {
+              return const VerifyEmailScreen();
+            }
+            
+            return MainLayout(userData: dataSnapshot.data!);
+          },
+        );
+      },
+    );
+  },
+)
     );
   }
 }
@@ -108,7 +181,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
           // action in the IDE, or press "p" in the console), to see the
           // wireframe for each widget.
-          mainAxisAlignment: .center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text('You have pushed the button this many times:'),
             Text(
