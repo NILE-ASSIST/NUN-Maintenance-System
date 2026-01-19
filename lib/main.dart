@@ -29,6 +29,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
         progressIndicatorTheme: const ProgressIndicatorThemeData(
+          strokeWidth: 2.0,
           color: nileBlue,
         ),
         // This is the theme of your application.

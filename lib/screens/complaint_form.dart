@@ -159,8 +159,12 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
                     controller: _buildingController,
                     decoration: const InputDecoration(
                       labelText: 'Building',
+                      hintText: 'E.g. Congo House',
                       filled: true,
                       fillColor: Color(0xFFF8F8F8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(8)),
+                      ),
                     ),
                   ),
                 ),
@@ -171,8 +175,12 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Room number',
+                      hintText: 'E.g. 320',
                       filled: true,
                       fillColor: Color(0xFFF8F8F8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(8)),
+                      ),
                     ),
                   ),
                 ),
@@ -188,6 +196,9 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
                 alignLabelWithHint: true,
                 filled: true,
                 fillColor: Color(0xFFF8F8F8),
+                border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(8)),
+                      ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {

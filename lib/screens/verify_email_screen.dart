@@ -80,14 +80,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: nileBlue,
-        title: Center(child: const Text("Verify Email", style: TextStyle(color: Colors.white),)),
-        actions: [
-          TextButton(
-            onPressed: () => AuthService().logout(),
-            child: const Text("Back to Login", style: TextStyle(color: Colors.white),),
-          )
-        ],
+        centerTitle: true,
+        title: const Text("Verify Email", style: TextStyle(color: Colors.white,),),
+        leading: IconButton(onPressed: () 
+          => AuthService().logout(), color: Colors.white
+        , icon: Icon(Icons.arrow_back)),
       ),
+      
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
