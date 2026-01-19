@@ -92,8 +92,6 @@ Future<String> _generateStaffId(String role) async {
     int currentCount = 0;
 
     if (snapshot.exists) {
-      // Get the current count for this specific role (or global if you prefer)
-      // We'll use a specific counter for each role to keep numbers small
       currentCount = (snapshot.data() as Map<String, dynamic>)[role] ?? 0;
     } else {
       // If document doesn't exist, create it inside the transaction
@@ -128,7 +126,7 @@ Future<String> _generateStaffId(String role) async {
     final String role = detectUserRole(email);
     final String collectionName = getCollectionName(role);
 
-// We generate this BEFORE creating the auth user to ensure database logic works first
+// generate staffid before creating the authenticated user to ensure database logic works 
     String staffId = await _generateStaffId(role);
 
     //create Firebase Auth Account
