@@ -38,7 +38,7 @@ class _MainLayoutState extends State<MainLayout> {
         return const AdminDashboard();
       case 'lecturer':
       case 'hostel_supervisor':
-        return DashboardScreen(fullName: fullName);
+        return DashboardScreen(userData: widget.userData);
       case 'facility_manager':
         return const FMDashboard();
       case 'maintenance':
