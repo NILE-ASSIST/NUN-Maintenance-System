@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:nileassist/screens/complaint_form.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
   // Fake dynamic data (later this comes from backend)
   final List<Map<String, dynamic>> stats = const [
     {"title": "Total", "value": 4, "icon": Icons.description},
@@ -30,62 +36,71 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(),
-              const SizedBox(height: 20),
-              _statsRow(),
-              const SizedBox(height: 20),
-              _submitButton(),
-              const SizedBox(height: 20),
-              _recentTicketsSection(),
-              const SizedBox(height: 20),
-              _draftsCard(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+    // Using the Nile Blue color for the main background to match ComplaintScreen style
+    const Color nileBlue = Color(0xFF243C8F);
 
-  // HEADER
-  Widget _header() {
-    return Container(
-      height: 160,
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Color(0xFF243C8F),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
+    return Scaffold(
+      backgroundColor: nileBlue,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Greeting,\nDr.",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.notifications, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF6F7FB),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(40),
+                    topRight: Radius.circular(40),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(top: 30, bottom: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _statsRow(),
+                      const SizedBox(height: 20),
+                      _submitButton(context),
+                      const SizedBox(height: 20),
+                      _recentTicketsSection(),
+                      const SizedBox(height: 20),
+                      _draftsCard(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            "Greeting,\nDr.",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.notifications, color: Colors.white),
-          ),
-        ],
       ),
     );
   }
@@ -107,8 +122,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // SUBMIT BUTTON
-  Widget _submitButton() {
+  Widget _submitButton(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ElevatedButton.icon(
@@ -121,7 +135,12 @@ class DashboardScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ComplaintFormPage()),
+          );
+        },
         icon: const Icon(Icons.add),
         label: const Text(
           "Submit New Complaint",
@@ -131,7 +150,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // RECENT TICKETS
   Widget _recentTicketsSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -223,7 +241,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // DRAFTS
   Widget _draftsCard() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -257,7 +274,6 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-// STAT CARD WIDGET
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
