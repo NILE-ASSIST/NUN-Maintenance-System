@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:nileassist/auth/auth_service.dart';
+import 'package:nileassist/screens/gstarted.dart';
 import 'package:nileassist/screens/login.dart';
 import 'package:nileassist/screens/mainLayout.dart';
 import 'package:nileassist/screens/verify_email_screen.dart';
@@ -50,6 +51,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: nileBlue),
         // colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
+      // home: WelcomeScreen(),
       home: StreamBuilder<User?>(
       stream: FirebaseAuth.instance.userChanges(),
       builder: (context, snapshot) {
@@ -60,7 +62,7 @@ class MyApp extends StatelessWidget {
           }
 
           if (!snapshot.hasData) {
-            return const LoginPage();
+            return const WelcomeScreen(); //formally login screen
           }
 
           final user = snapshot.data!;
