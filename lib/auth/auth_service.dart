@@ -82,17 +82,18 @@ class AuthService {
     if (password.length < 6)
       throw Exception('Password must be at least 6 characters');
 
-    String cleanEmail = email.trim().toLowerCase();
+    String TestEmail = email.trim().toLowerCase();
 
     //test accounts
     bool isTester =
-        cleanEmail == 'sundayamangijnr@gmail.com' ||
-        cleanEmail == 'techwithamangi@gmail.com' ||
-        cleanEmail == 'chrisibangar@gmail.com' ||
-        cleanEmail == 'amasun2005@yahoo.com' ||
-        cleanEmail == 'sundayamangi@gmail.com';
+        TestEmail == 'sundayamangijnr@gmail.com' ||
+        TestEmail == 'techwithamangi@gmail.com' ||
+        TestEmail == 'chrisibangar@gmail.com' ||
+        TestEmail == 'amasun2005@yahoo.com' ||
+        TestEmail == 'sundayamangi@gmail.com' ||
+        TestEmail == 'aduray49@gmail.com';
 
-    if (!isTester && !nileStaffRegex.hasMatch(cleanEmail)) {
+    if (!isTester && !nileStaffRegex.hasMatch(TestEmail)) {
       throw FirebaseAuthException(
         code: 'invalid-email-domain',
         message:
@@ -125,7 +126,7 @@ class AuthService {
       'uid': user.uid,
       'staffId': staffId,
       'fullName': fullName,
-      'email': cleanEmail,
+      'email': TestEmail,
       'role': role,
       'department': department, // empty for non-maintenance roles
       'emailVerified': false,
