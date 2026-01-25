@@ -188,6 +188,9 @@ class AuthService {
       'profilePicture': (userDoc.data() as Map).containsKey('profilePicture')
           ? userDoc.get('profilePicture')
           : null,
+      'department': (userDoc.data() as Map).containsKey('department')
+          ? userDoc.get('department')
+          : null,
     };
   }
 
@@ -237,6 +240,9 @@ class AuthService {
           : 'Pending',
       'profilePicture': (userDoc.data() as Map).containsKey('profilePicture')
           ? userDoc.get('profilePicture')
+          : null,
+      'department': (userDoc.data() as Map).containsKey('department')
+          ? userDoc.get('department')
           : null,
     };
   }

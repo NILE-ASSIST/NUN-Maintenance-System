@@ -119,10 +119,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.account_circle,
-            size: 60,
-            color: Color(0xFF274496),
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: const Color(0xFF274496),
+            backgroundImage: widget.userData['profilePicture'] != null
+                ? NetworkImage(widget.userData['profilePicture'])
+                : null,
+            child: widget.userData['profilePicture'] == null
+                ? const Icon(Icons.account_circle, size: 60, color: Colors.white)
+                : null,
           ),
           const SizedBox(height: 10),
           Text(
@@ -198,7 +203,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 20),
           
           // 3. Department with Building Icon
-          _buildDetailItem("Department", "", Icons.apartment_outlined),
+          if (widget.userData['department'] != null && widget.userData['department'].toString().isNotEmpty)
+            _buildDetailItem("Department", widget.userData['department'], Icons.apartment_outlined),
         ],
       ),
     );
