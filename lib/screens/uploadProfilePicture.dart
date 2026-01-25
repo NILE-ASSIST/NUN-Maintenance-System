@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/mainLayout.dart';
 import 'package:nileassist/screens/maintenance.dart';
 
@@ -15,7 +16,6 @@ class UploadProfileScreen extends StatefulWidget {
 }
 
 class _UploadProfileScreenState extends State<UploadProfileScreen> {
-  static const Color nileBlue = Color(0xFF1E3DD3);
   File? _imageFile;
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
@@ -41,17 +41,41 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
       await ref.putFile(_imageFile!);
       String downloadUrl = await ref.getDownloadURL();
 
-      // Update Firestore Document
-      await FirebaseFirestore.instance
-          .collection('maintenance') 
-          .doc(widget.userId)
-          .update({'profilePicture': downloadUrl});
+      // Try both collections (maintenance_staff and maintenance_supervisors)
+      DocumentSnapshot? userDoc;
+      String? collection;
 
-      // Get updated user data
-      final userDoc = await FirebaseFirestore.instance
+      // Check maintenancefirst
+      var staffDoc = await FirebaseFirestore.instance
           .collection('maintenance')
           .doc(widget.userId)
           .get();
+      
+      if (staffDoc.exists) {
+        userDoc = staffDoc;
+        collection = 'maintenance';
+      } else {
+        // Check maintenance_supervisors
+        var supervisorDoc = await FirebaseFirestore.instance
+            .collection('maintenance_supervisors')
+            .doc(widget.userId)
+            .get();
+        
+        if (supervisorDoc.exists) {
+          userDoc = supervisorDoc;
+          collection = 'maintenance_supervisors';
+        }
+      }
+
+      if (userDoc == null || collection == null) {
+        throw Exception('User not found in maintenance collections');
+      }
+
+      // Update Firestore Document
+      await FirebaseFirestore.instance
+          .collection(collection)
+          .doc(widget.userId)
+          .update({'profilePicture': downloadUrl});
 
       if (!mounted) return;
 
@@ -61,7 +85,7 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
           builder: (context) => MainLayout(
             userData: {
               'uid': widget.userId,
-              'email': userDoc['email'],
+              'email': userDoc!['email'],
               'role': userDoc['role'],
               'fullName': userDoc['fullName'],
               'profilePicture': downloadUrl,
@@ -80,7 +104,7 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Verification Required", style: TextStyle(color: Colors.white),), backgroundColor: nileBlue, centerTitle: true,),
+      appBar: AppBar(title: const Text("Verification Required", style: TextStyle(color: Colors.white),), backgroundColor: MyApp.nileBlue, centerTitle: true,),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -92,7 +116,7 @@ class _UploadProfileScreenState extends State<UploadProfileScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              "As a maintenance staff, you must upload a clear photo of yourself before accessing the dashboard.",
+              "As a maintenance staff or supervisor, you must upload a clear photo of yourself before accessing the dashboard.",
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),

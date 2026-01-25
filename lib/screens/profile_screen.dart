@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nileassist/auth/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nileassist/main.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -12,12 +13,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const Color nileBlue = Color(0xFF1E3DD3);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: nileBlue,
+      backgroundColor: MyApp.nileBlue,
       appBar: AppBar(
         title: const Text(
           "Profile",
@@ -208,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildDetailItem(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: nileBlue),
+        Icon(icon, size: 20, color: MyApp.nileBlue),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

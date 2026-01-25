@@ -5,237 +5,242 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  
-  final RegExp adminRegex =
-      RegExp(r'^admin\.[a-z]+@nileuniversity\.edu\.ng$');
+  // Single Regex for all staff emails
+  final RegExp nileStaffRegex = RegExp(
+    r'^[a-zA-Z0-9._]+@nileuniversity\.edu\.ng$',
+    caseSensitive: false,
+  );
 
-  final RegExp lecturerRegex =
-      RegExp(r'^[a-z]+\.[a-z]+@nileuniversity\.edu\.ng$');
+  // Access codes
+  // only users with the codes can create these specific accounts.
+  static const Map<String, String> masterCodes = {
+    'admin': 'NUN-ADM-2026',
+    'facility_manager': 'NUN-FAC-2026',
+    'maintenance_supervisor': 'NUN-SUP-2026',
+  };
 
-  final RegExp hostelSupervisorRegex =
-      RegExp(r'^hs\.[a-z]+@nileuniversity\.edu\.ng$');
 
-  final RegExp facilityManagerRegex =
-      RegExp(r'^fm\.[a-z]+@nileuniversity\.edu\.ng$');
-
-  final RegExp maintenanceRegex =
-      RegExp(r'^(hvac|cv|ele|plm)[0-9]+@nileuniversity\.edu\.ng$');
-
-  
-  String detectUserRole(String email) {
-    email = email.toLowerCase();
-
-    //testing email verification using real gmail address
-
-    if(email == 'sundayamangijnr@gmail.com'){
-      return 'admin';
-    }
-    if(email == 'techwithamangi@gmail.com'){
-      return 'lecturer';
-    }
-    if(email == 'chrisibangar@gmail.com'){
-      return 'facility_manager';
-    }
-    if(email == 'amasun2005@yahoo.com'){
-      return 'hostel_supervisor';
-    }
-
-    if (adminRegex.hasMatch(email)) return 'admin';
-    if (facilityManagerRegex.hasMatch(email)) return 'facility_manager';
-    if (hostelSupervisorRegex.hasMatch(email)) return 'hostel_supervisor';
-    if (maintenanceRegex.hasMatch(email)) return 'maintenance';
-    if (lecturerRegex.hasMatch(email)) return 'lecturer';
-
-    
-    if (email.endsWith('@nileuniversity.edu.ng')) {
-      return 'student';
-    }
-
-    throw FirebaseAuthException(
-      code: 'invalid-email-role',
-      message: 'Unauthorized email format.',
-    );
-  }
-
-  //get collection name based on the user role
   String getCollectionName(String role) {
     switch (role) {
       case 'admin':
         return 'admins';
-      case 'lecturer':
-        return 'lecturers';
       case 'facility_manager':
         return 'facility_managers';
+      case 'maintenance_supervisor':
+        return 'maintenance_supervisors';
+      case 'maintenance_staff':
+        return 'maintenance_staff';
       case 'hostel_supervisor':
         return 'hostel_supervisors';
-      case 'maintenance':
-        return 'maintenance';
       default:
-        return 'Unauthorised User'; // Fallback
+        return 'lecturers';
     }
   }
 
+//staff id generator
+  Future<String> _generateStaffId(String role) async {
+    String prefix = 'STF';
+    if (role == 'admin') prefix = 'ADM';
+    if (role == 'facility_manager') prefix = 'FAC';
+    if (role == 'maintenance_supervisor') prefix = 'SUP';
+    if (role == 'maintenance_staff') prefix = 'MNT';
+    if (role == 'hostel_supervisor') prefix = 'HOS';
+    if (role == 'lecturer') prefix = 'LEC';
 
-Future<String> _generateStaffId(String role) async {
-  String prefix = 'STF'; // Default
-  if (role == 'admin') prefix = 'ADM';
-  if (role == 'lecturer') prefix = 'LEC';
-  if (role == 'hostel_supervisor') prefix = 'HOS';
-  if (role == 'facility_manager') prefix = 'FAC';
-  if (role == 'maintenance') prefix = 'MNT';
+    final DocumentReference counterRef = _firestore
+        .collection('system_metadata')
+        .doc('staff_counters');
 
-  final DocumentReference counterRef = _firestore.collection('system_metadata').doc('staff_counters');
+    return _firestore.runTransaction((transaction) async {
+      DocumentSnapshot snapshot = await transaction.get(counterRef);
+      int currentCount = 0;
 
-  return _firestore.runTransaction((transaction) async {
-    DocumentSnapshot snapshot = await transaction.get(counterRef);
+      if (snapshot.exists) {
+        currentCount = (snapshot.data() as Map<String, dynamic>)[role] ?? 0;
+      } else {
+        transaction.set(counterRef, {role: 0});
+      }
 
-    int currentCount = 0;
+      int newCount = currentCount + 1;
+      transaction.update(counterRef, {role: newCount});
 
-    if (snapshot.exists) {
-      currentCount = (snapshot.data() as Map<String, dynamic>)[role] ?? 0;
-    } else {
-      // If document doesn't exist, create it inside the transaction
-      transaction.set(counterRef, {role: 0});
-    }
+      return '$prefix-${newCount.toString().padLeft(4, '0')}';
+    });
+  }
 
-    int newCount = currentCount + 1;
 
-    // Update the counter in the database
-    transaction.update(counterRef, {role: newCount});
-
-    // Format: PRE-0000 (e.g., LEC-0005)
-    // .toString().padLeft(4, '0') ensures it is always 4 digits
-    return '$prefix-${newCount.toString().padLeft(4, '0')}';
-  });
-}
 
   Future<User?> registerUser({
     required String fullName,
     required String email,
     required String password,
+    required String role,
+    String? department,
+    String? accessCode,
   }) async {
-    if (fullName.trim().isEmpty) {
-      throw Exception('Full name is required');
-    }
-
-    if (password.length < 6) {
+    if (fullName.trim().isEmpty) throw Exception('Full name is required');
+    if (password.length < 6)
       throw Exception('Password must be at least 6 characters');
+
+    String cleanEmail = email.trim().toLowerCase();
+
+    //test accounts
+    bool isTester =
+        cleanEmail == 'sundayamangijnr@gmail.com' ||
+        cleanEmail == 'techwithamangi@gmail.com' ||
+        cleanEmail == 'chrisibangar@gmail.com' ||
+        cleanEmail == 'amasun2005@yahoo.com' ||
+        cleanEmail == 'sundayamangi@gmail.com';
+
+    if (!isTester && !nileStaffRegex.hasMatch(cleanEmail)) {
+      throw FirebaseAuthException(
+        code: 'invalid-email-domain',
+        message:
+            'Access Restricted: Only official @nileuniversity.edu.ng emails are allowed.',
+      );
     }
 
-    //detect role and collection
-    final String role = detectUserRole(email);
-    final String collectionName = getCollectionName(role);
+    //Validate Access Code for Privileged Roles
+    if (masterCodes.containsKey(role)) {
+      if (accessCode == null || accessCode.trim() != masterCodes[role]) {
+        throw FirebaseAuthException(
+          code: 'invalid-access-code',
+          message: 'Invalid or missing Access Code for the role: $role',
+        );
+      }
+    }
 
-// generate staffid before creating the authenticated user to ensure database logic works 
-    String staffId = await _generateStaffId(role);
-
-    //create Firebase Auth Account
-    UserCredential credential =
-        await _auth.createUserWithEmailAndPassword(
+    //create user
+    UserCredential credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
-
     User user = credential.user!;
 
-    // save user Profile in specific collection
-    // Instead of 'users', we use 'admins', 'lecturers', etc.
+    //create firestore profile
+    String collectionName = getCollectionName(role);
+    String staffId = await _generateStaffId(role);
+
     await _firestore.collection(collectionName).doc(user.uid).set({
       'uid': user.uid,
       'staffId': staffId,
       'fullName': fullName,
-      'email': email.toLowerCase(),
+      'email': cleanEmail,
       'role': role,
+      'department': department, // empty for non-maintenance roles
       'emailVerified': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // return user;
-  try {
+    try {
       await user.sendEmailVerification();
-      // DON'T sign out - keep user logged in
     } catch (e) {
-      //if email fails to send, delete create user
-      await user.delete();
-      throw Exception("Failed to send verification email: $e");
+      // Log error but proceed
     }
+    return user;
   }
 
-  
   Future<Map<String, dynamic>> loginUser({
     required String email,
     required String password,
   }) async {
-    //Sign In
-    UserCredential credential =
-        await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    User user = credential.user!;
-
-    //checks where to look for the user data
-    
-    final String role = detectUserRole(user.email!);
-    final String collectionName = getCollectionName(role);
-
-    DocumentSnapshot userDoc =
-        await _firestore.collection(collectionName).doc(user.uid).get();
-
-    if (!userDoc.exists) {
-      throw Exception('User profile not found in $collectionName collection.');
-    }
-
-    // user data to return
-    return {
-      'uid': user.uid,
-      'email': user.email,
-      'role': userDoc['role'],
-      'fullName': userDoc['fullName'],
-      'profilePicture': userDoc.data().toString().contains('ProfilePicture')?userDoc.get('profilePicture'):null,
-    };
-  }
-
-Future<void> resendVerificationEmail(String email, String password) async {
     UserCredential credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
-    if (!credential.user!.emailVerified) {
-      await credential.user!.sendEmailVerification();
-      await _auth.signOut();
+    User user = credential.user!;
+
+    // Search all collections since we don't know the role yet
+    List<String> collections = [
+      'lecturers',
+      'admins',
+      'facility_managers',
+      'maintenance_supervisors',
+      'maintenance_staff',
+      'hostel_supervisors',
+    ];
+
+    DocumentSnapshot? userDoc;
+    String? foundRole;
+
+    for (String col in collections) {
+      DocumentSnapshot doc = await _firestore
+          .collection(col)
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        userDoc = doc;
+        foundRole = doc['role'];
+        break;
+      }
     }
-  }
-  
-  Future<void> logout() async {
-    await _auth.signOut();
+
+    if (userDoc == null) {
+      throw Exception('User profile not found. Please contact support.');
+    }
+
+    return {
+      'uid': user.uid,
+      'email': user.email,
+      'role': foundRole,
+      'fullName': userDoc['fullName'],
+      'profilePicture': (userDoc.data() as Map).containsKey('profilePicture')
+          ? userDoc.get('profilePicture')
+          : null,
+    };
   }
 
   Future<Map<String, dynamic>?> getCurrentUserData() async {
     User? user = _auth.currentUser;
-    
     if (user == null || !user.emailVerified) return null;
-    
-    final String role = detectUserRole(user.email!);
-    final String collectionName = getCollectionName(role);
-    
-    DocumentSnapshot userDoc = await _firestore.collection(collectionName).doc(user.uid).get();
-    
-    if (!userDoc.exists) return null;
-    
-    // Update Firestore verification flag
-    await _firestore.collection(collectionName).doc(user.uid).update({
+
+    // search collections for user profile
+    List<String> collections = [
+      'lecturers',
+      'admins',
+      'facility_managers',
+      'maintenance_supervisors',
+      'maintenance_staff',
+      'hostel_supervisors',
+    ];
+
+    DocumentSnapshot? userDoc;
+    String? foundCollection;
+
+    for (String col in collections) {
+      DocumentSnapshot doc = await _firestore
+          .collection(col)
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        userDoc = doc;
+        foundCollection = col;
+        break;
+      }
+    }
+
+    if (userDoc == null) return null;
+
+    // update verified status
+    await _firestore.collection(foundCollection!).doc(user.uid).update({
       'emailVerified': true,
     });
-    
+
     return {
       'uid': user.uid,
       'email': user.email,
       'role': userDoc['role'],
       'fullName': userDoc['fullName'],
-      'staffId': userDoc.data().toString().contains('staffId') ? userDoc.get('staffId') : 'Pending',
-      'profilePicture': userDoc.data().toString().contains('profilePicture') ? userDoc.get('profilePicture') : null,
+      'staffId': (userDoc.data() as Map).containsKey('staffId')
+          ? userDoc.get('staffId')
+          : 'Pending',
+      'profilePicture': (userDoc.data() as Map).containsKey('profilePicture')
+          ? userDoc.get('profilePicture')
+          : null,
     };
+  }
+
+  Future<void> logout() async {
+    await _auth.signOut();
   }
 }

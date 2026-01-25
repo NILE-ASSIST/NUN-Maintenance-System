@@ -41,7 +41,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color nileBlue = Color(0xFF243C8F);
     return Scaffold(
       backgroundColor: MyApp.nileBlue,
       body: SafeArea(

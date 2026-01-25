@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nileassist/auth/auth_service.dart';
+import 'package:nileassist/main.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
@@ -11,7 +12,6 @@ class VerifyEmailScreen extends StatefulWidget {
 }
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
-  static const Color nileBlue = Color(0xFF1E3DD3);
   Timer? _timer;
   bool _canResendEmail = true;
 
@@ -79,7 +79,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: nileBlue,
+        backgroundColor: MyApp.nileBlue,
         centerTitle: true,
         title: const Text("Verify Email", style: TextStyle(color: Colors.white,),),
         leading: IconButton(onPressed: () 
@@ -92,7 +92,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mark_email_unread_outlined, size: 90, color: nileBlue,),
+            const Icon(Icons.mark_email_unread_outlined, size: 90, color: MyApp.nileBlue,),
             const SizedBox(height: 24),
             const Text(
               "Verify your email",

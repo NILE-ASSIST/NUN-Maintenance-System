@@ -53,8 +53,8 @@ class MyApp extends StatelessWidget {
       ),
       // home: WelcomeScreen(),
       home: StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.userChanges(),
-      builder: (context, snapshot) {
+        stream: FirebaseAuth.instance.userChanges(),
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
@@ -62,22 +62,21 @@ class MyApp extends StatelessWidget {
           }
 
           if (!snapshot.hasData) {
-            return const WelcomeScreen(); //formally login screen
+            return const WelcomeScreen(); 
           }
 
           final user = snapshot.data!;
 
-          // Check email verification first
           if (!user.emailVerified) {
             return const VerifyEmailScreen();
           }
 
-          // After email verified, check if maintenance staff needs to upload profile picture
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('maintenance')
-                .doc(user.uid)
-                .get(),
+          // check profile picture for maintenance staff and supervisors at the same time
+          return FutureBuilder<List<DocumentSnapshot>>(
+            future: Future.wait([
+              FirebaseFirestore.instance.collection('maintenance_staff').doc(user.uid).get(),
+              FirebaseFirestore.instance.collection('maintenance_supervisors').doc(user.uid).get(),
+            ]),
             builder: (context, maintenanceSnapshot) {
               if (maintenanceSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
@@ -85,14 +84,34 @@ class MyApp extends StatelessWidget {
                 );
               }
 
-              // If user is maintenance staff and has no profile picture
-              if (maintenanceSnapshot.hasData &&
-                  maintenanceSnapshot.data!.exists &&
-                  !maintenanceSnapshot.data!.data().toString().contains('profilePicture')) {
-                return UploadProfileScreen(userId: user.uid);
+              // determine if they need to upload a photo
+              if (maintenanceSnapshot.hasData) {
+                final results = maintenanceSnapshot.data!;
+                final staffDoc = results[0];
+                final supervisorDoc = results[1];
+
+                DocumentSnapshot? targetDoc;
+
+                // find out which collection the user is in
+                if (staffDoc.exists) {
+                  targetDoc = staffDoc;
+                } else if (supervisorDoc.exists) {
+                  targetDoc = supervisorDoc;
+                }
+
+                //if found in either maintenance collection, check for the picture
+                if (targetDoc != null) {
+                  final data = targetDoc.data() as Map<String, dynamic>?;
+                  
+                  // If 'profilePicture' is missing or empty, block access
+                  if (data != null && 
+                     (data['profilePicture'] == null || data['profilePicture'] == '')) {
+                    return UploadProfileScreen(userId: user.uid);
+                  }
+                }
               }
 
-              // if all validation is correct, load user data and show dashboard
+              //if all validation is correct, load full user data and show dashboard
               return FutureBuilder<Map<String, dynamic>?>(
                 future: AuthService().getCurrentUserData(),
                 builder: (context, dataSnapshot) {
@@ -102,8 +121,10 @@ class MyApp extends StatelessWidget {
                     );
                   }
 
-                  if (!dataSnapshot.hasData) {
-                    return const VerifyEmailScreen();
+                  // if fetching data failed (e.g. deleted user), go back to verification or login
+                  if (!dataSnapshot.hasData || dataSnapshot.data == null) {
+                     // Fallback, some issue occurred
+                    return const VerifyEmailScreen(); 
                   }
 
                   return MainLayout(userData: dataSnapshot.data!);
@@ -112,7 +133,7 @@ class MyApp extends StatelessWidget {
             },
           );
         },
-      )
+      ),
     );
   }
 }

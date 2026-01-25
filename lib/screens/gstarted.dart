@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/login.dart';
 // import 'package:nileassist/screen/login.dart';
 
@@ -7,14 +8,11 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color nileBlue = Color(0xFF1E3DD3);
-    const Color greenButton = Color(0xFF8BC34A);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. BACKGROUND IMAGE
           Positioned(
             top: 0,
             left: 0,
@@ -26,7 +24,7 @@ class WelcomeScreen extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
-          // SizedBox(height: 150,),
+          
           Positioned(
             top: 430, //formally 310
             left: 0,
@@ -34,7 +32,7 @@ class WelcomeScreen extends StatelessWidget {
             bottom: 0,
             child: Container(
               decoration: const BoxDecoration(
-                color: nileBlue,
+                color: MyApp.nileBlue,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(40),
                   topRight: Radius.circular(40),
@@ -73,7 +71,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: greenButton,
+                      backgroundColor: MyApp.nileGreen,
                       foregroundColor: Colors.white,
                       minimumSize: Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
