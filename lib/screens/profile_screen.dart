@@ -120,8 +120,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 40,
-            backgroundColor: const Color(0xFF274496),
+            radius: 30,
+            backgroundColor: MyApp.nileBlue,
             backgroundImage: widget.userData['profilePicture'] != null
                 ? NetworkImage(widget.userData['profilePicture'])
                 : null,

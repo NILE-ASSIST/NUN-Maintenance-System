@@ -121,16 +121,16 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Image.asset(
-                'assets/images/logo-removebg-preview.png',
-                height: 80,
-                fit: BoxFit.contain,
-              ),
-            ),
+            // Center(
+            //   child: Image.asset(
+            //     'assets/images/logo-removebg-preview.png',
+            //     height: 80,
+            //     fit: BoxFit.contain,
+            //   ),
+            // ),
             const SizedBox(height: 16),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(child: _buildFormHeader()),
                 IconButton(
