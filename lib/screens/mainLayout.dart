@@ -43,6 +43,7 @@ class _MainLayoutState extends State<MainLayout> {
       case 'facility_manager':
         return const FMDashboard();
       case 'maintenance':
+      case 'maintenance_staff':
         return const MaintenanceDashboard();
       case 'maintenance_supervisor':
         return const MaintenanceSupervisor();

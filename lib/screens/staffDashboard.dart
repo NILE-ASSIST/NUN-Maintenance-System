@@ -3,6 +3,9 @@ import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/complaint_form.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nileassist/screens/complaint_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nileassist/screens/complaintDetail.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -14,30 +17,17 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // Fake dynamic data (later this comes from backend)
-  final List<Map<String, dynamic>> stats = const [
-    {"title": "Total", "value": 4, "icon": Icons.description},
-    {"title": "Pending", "value": 1, "icon": Icons.schedule},
-    {"title": "In Progress", "value": 1, "icon": Icons.sync},
-    {"title": "Resolved", "value": 1, "icon": Icons.check_circle},
-  ];
-
-  final List<Map<String, dynamic>> tickets = const [
-    {
-      "status": "Pending",
-      "color": Colors.orange,
-      "title": "AC not cooling properly",
-      "category": "Plumbing",
-      "date": "Jan 19, 2024",
-    },
-    {
-      "status": "In Progress",
-      "color": Colors.blue,
-      "title": "AC not cooling properly",
-      "category": "Plumbing",
-      "date": "Jan 19, 2024",
-    },
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  Stream<QuerySnapshot> _getComplaintsStream() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Stream.empty();
+    
+    return _firestore
+        .collection('tickets')
+        .where('issuerID', isEqualTo: user.uid)
+        .snapshots();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,11 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     "Good ${_getGreeting()},\n${widget.userData['fullName'] ?? 'User'}",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -84,20 +70,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     topRight: Radius.circular(40),
                   ),
                 ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(top: 30, bottom: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _statsRow(),
-                      const SizedBox(height: 20),
-                      _submitButton(context),
-                      const SizedBox(height: 20),
-                      _recentTicketsSection(),
-                      const SizedBox(height: 20),
-                      _draftsCard(),
-                    ],
-                  ),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _getComplaintsStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    final allDocs = snapshot.data?.docs ?? [];
+
+                    // filtering logic
+                    // 1. Keep allDocs for the Stats (so you see total history count)
+                    
+                    // 2. Create activeDocs for the List (Hide Resolved)
+                    final activeDocs = allDocs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return data['status'] != 'Resolved';
+                    }).toList();
+
+                    // 3. Sort active docs by date
+                    activeDocs.sort((a, b) {
+                      Timestamp? tA = (a.data() as Map)['dateCreated'];
+                      Timestamp? tB = (b.data() as Map)['dateCreated'];
+                      if (tA == null || tB == null) return 0;
+                      return tB.compareTo(tA);
+                    });
+                    
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.only(top: 30, bottom: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Pass all docs to stats so numbers are accurate
+                          _statsRow(allDocs),
+                          const SizedBox(height: 20),
+                          _submitButton(context),
+                          const SizedBox(height: 20),
+                          // Pass only active docs to the list
+                          _recentTicketsSection(activeDocs),
+                          const SizedBox(height: 20),
+                          _draftsCard(),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -109,26 +125,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _getGreeting() {
     var hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Morning';
-    } else if (hour < 17) {
-      return 'Afternoon';
-    } else {
-      return 'Evening';
-    }
+    if (hour < 12) return 'Morning';
+    if (hour < 17) return 'Afternoon';
+    return 'Evening';
   }
 
-  // STATS ROW
-  Widget _statsRow() {
+  Widget _statsRow(List<QueryDocumentSnapshot> complaints) {
+    final total = complaints.length;
+    final pending = complaints.where((c) => (c.data() as Map)['status'] == 'Pending').length;
+    final inProgress = complaints.where((c) => (c.data() as Map)['status'] == 'In Progress').length;
+    final resolved = complaints.where((c) => (c.data() as Map)['status'] == 'Resolved').length;
+    
+    final stats = [
+      {"title": "Total", "value": total, "icon": Icons.description},
+      {"title": "Pending", "value": pending, "icon": Icons.schedule},
+      {"title": "In Progress", "value": inProgress, "icon": Icons.sync},
+      {"title": "Resolved", "value": resolved, "icon": Icons.check_circle},
+    ];
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: stats.map((stat) {
           return _StatCard(
-            title: stat["title"],
+            title: stat["title"] as String,
             value: stat["value"].toString(),
-            icon: stat["icon"],
+            icon: stat["icon"] as IconData,
           );
         }).toList(),
       ),
@@ -144,26 +167,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           foregroundColor: Colors.black,
           elevation: 0,
           minimumSize: const Size(double.infinity, 55),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ComplaintFormPage()),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ComplaintFormPage()));
         },
         icon: const Icon(Icons.add),
-        label: const Text(
-          "Submit New Complaint",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        label: const Text("Submit New Complaint", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
       ),
     );
   }
 
-  Widget _recentTicketsSection() {
+  Widget _recentTicketsSection(List<QueryDocumentSnapshot> complaints) {
+    // only show top 3 active complaints
+    final recentComplaints = complaints.take(3).toList();
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -172,92 +190,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Recent Complaint Ticket",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              const Text("Active Tickets", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               TextButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ComplaintScreen()),
-                  );
                 },
                 child: const Text("View All >", style: TextStyle(color: Colors.blue)),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          ...tickets.map((ticket) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ticketCard(
-                status: ticket["status"],
-                color: ticket["color"],
-                title: ticket["title"],
-                category: ticket["category"],
-                date: ticket["date"],
-              ),
-            );
-          }).toList(),
+          if (recentComplaints.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+              child: const Center(child: Text("No active complaints.", style: TextStyle(color: Colors.grey))),
+            )
+          else
+            ...recentComplaints.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final status = data['status'] ?? 'Pending';
+              final timestamp = data['dateCreated'] as Timestamp?;
+              final date = timestamp != null ? DateFormat('MMM d, yyyy').format(timestamp.toDate()) : 'Just now';
+              
+              Color statusColor;
+              switch (status.toString().toLowerCase()) {
+                case 'in progress': statusColor = Colors.blue; break;
+                case 'being validated': statusColor = Colors.purple; break;
+                case 'needs recheck': statusColor = Colors.red; break;
+                default: statusColor = Colors.orange;
+              }
+              
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ticketCard(
+                  ticketId: doc.id,
+                  data: data,
+                  status: status,
+                  color: statusColor,
+                  title: data['description'] ?? 'No description',
+                  category: data['category'] ?? 'General',
+                  date: date,
+                ),
+              );
+            }).toList(),
         ],
       ),
     );
   }
 
   Widget _ticketCard({
+    required String ticketId,
+    required Map<String, dynamic> data,
     required String status,
     required Color color,
     required String title,
     required String category,
     required String date,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text("Tracking ID"),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ComplaintDetailScreen(ticketId: ticketId, data: data)));
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text("ID: #${ticketId.length > 6 ? ticketId.substring(0, 6).toUpperCase() : ticketId}", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Text(status, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(color: color, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(category),
-                const SizedBox(height: 4),
-                Text(date, style: const TextStyle(color: Colors.grey)),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(category),
+                  const SizedBox(height: 4),
+                  Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.arrow_forward_ios, size: 16),
-        ],
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }
@@ -267,27 +292,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: const [
-            Icon(Icons.description),
+            Icon(Icons.description, color: Colors.grey),
             SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Drafts", style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(
-                    "1 unsaved drafts",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                  Text("0 unsaved drafts", style: TextStyle(color: Colors.grey)),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16),
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
           ],
         ),
       ),
@@ -300,31 +319,21 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
+  const _StatCard({required this.title, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 75,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Column(
         children: [
           Icon(icon, color: Colors.blue),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 4),
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ],
       ),
     );

@@ -10,6 +10,12 @@ class AuthService {
     r'^[a-zA-Z0-9._]+@nileuniversity\.edu\.ng$',
     caseSensitive: false,
   );
+  final RegExp nileStudentRegex = RegExp(
+    r'^[0-9{9}]+@nileuniversity\.edu\.ng$',
+  );
+
+  
+  
 
   // Access codes
   // only users with the codes can create these specific accounts.
@@ -29,7 +35,7 @@ class AuthService {
       case 'maintenance_supervisor':
         return 'maintenance_supervisors';
       case 'maintenance_staff':
-        return 'maintenance_staff';
+        return 'maintenance';
       case 'hostel_supervisor':
         return 'hostel_supervisors';
       default:
@@ -91,6 +97,7 @@ class AuthService {
         TestEmail == 'chrisibangar@gmail.com' ||
         TestEmail == 'amasun2005@yahoo.com' ||
         TestEmail == 'sundayamangi@gmail.com' ||
+        TestEmail == 'queenamangi426@gmail.com' ||
         TestEmail == 'aduray49@gmail.com';
 
     if (!isTester && !nileStaffRegex.hasMatch(TestEmail)) {
@@ -100,6 +107,15 @@ class AuthService {
             'Access Restricted: Only official @nileuniversity.edu.ng emails are allowed.',
       );
     }
+//prevent all students from registering
+    if (nileStudentRegex.hasMatch(email)) {
+    throw FirebaseAuthException(
+      code: 'access-denied',
+      message:
+          'Access Restricted: Student emails are not allowed.',
+    );
+  }
+
 
     //Validate Access Code for Privileged Roles
     if (masterCodes.containsKey(role)) {
@@ -157,7 +173,7 @@ class AuthService {
       'admins',
       'facility_managers',
       'maintenance_supervisors',
-      'maintenance_staff',
+      'maintenance',
       'hostel_supervisors',
     ];
 
@@ -204,7 +220,7 @@ class AuthService {
       'admins',
       'facility_managers',
       'maintenance_supervisors',
-      'maintenance_staff',
+      'maintenance',
       'hostel_supervisors',
     ];
 
