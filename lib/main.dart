@@ -8,10 +8,12 @@ import 'package:nileassist/screens/mainLayout.dart';
 import 'package:nileassist/screens/verify_email_screen.dart';
 import 'package:nileassist/screens/uploadProfilePicture.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nileassist/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await NotificationService().initialize();
   runApp(const MyApp());
 }
 

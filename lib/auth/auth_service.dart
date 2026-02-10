@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nileassist/services/notification_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -97,7 +98,12 @@ class AuthService {
         TestEmail == 'chrisibangar@gmail.com' ||
         TestEmail == 'amasun2005@yahoo.com' ||
         TestEmail == 'sundayamangi@gmail.com' ||
-        TestEmail == 'queenamangi426@gmail.com' ||
+        TestEmail == '20222731@nileuniversity.edu.ng' ||
+        TestEmail == '20220571@nileuniversity.edu.ng' ||
+        TestEmail == '211212115@nileuniversity.edu.ng' ||
+        TestEmail == '20220459@nileuniversity.edu.ng' ||
+        TestEmail == '20220459@nileuniversity.edu.ng' ||
+        TestEmail == '20220459@nileuniversity.edu.ng' ||
         TestEmail == 'aduray49@gmail.com';
 
     if (!isTester && !nileStaffRegex.hasMatch(TestEmail)) {
@@ -154,6 +160,14 @@ class AuthService {
     } catch (e) {
       // Log error but proceed
     }
+
+//save notification token upon registration to ensure notifications work immediately after first login
+    try {
+      await NotificationService().initialize();
+    } catch (e) {
+      print("Warning: Failed to init tokens on register: $e");
+    }
+
     return user;
   }
 
@@ -194,6 +208,20 @@ class AuthService {
 
     if (userDoc == null) {
       throw Exception('User profile not found. Please contact support.');
+    }
+
+//ensures that the current device is the active one for notifications and ensures the database has the latest token for the user
+   try {
+      final notifService = NotificationService();
+      
+      //setup listeners (background/foreground)
+      notifService.initialize(); 
+      
+      // 2. forces the token into the database immediately
+      await notifService.uploadUserToken(); 
+      
+    } catch (e) {
+      print("Warning: Failed to refresh notification token: $e");
     }
 
     return {
@@ -264,6 +292,14 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    
+    //delete notification token before logging out
+    try {
+      await NotificationService().deleteToken();
+    } catch (e) {
+      print("Warning: Failed to delete token: $e");
+    }
+
     await _auth.signOut();
   }
 }

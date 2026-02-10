@@ -14,7 +14,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     required this.data,
   });
 
-  // --- GETTERS & ROLE CHECKS ---
+  //getters and role checks
   String get currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
   bool get isIssuer => data['issuerID'] == currentUid;
 
@@ -36,17 +36,57 @@ class ComplaintDetailScreen extends StatelessWidget {
     return doc.exists;
   }
 
-  //Maintenance staff: Mark as Done
+  // notification helper
+  Future<void> _sendNotification({
+    required String title,
+    required String body,
+    required String? userId, // Target User ID
+    String? role,            // Target Role (Optional)
+  }) async {
+    if (userId == null && role == null) return;
+
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'title': title,
+      'body': body,
+      'userId': userId,       // Target specific user
+      'targetRole': role,     // Target a whole group (optional)
+      'ticketId': ticketId,   // Link to this ticket
+      'createdAt': FieldValue.serverTimestamp(), // for ordering
+      'read': false,
+    });
+    print("🔔 Notification Sent to: $userId ($title)");
+  }
+
+  // Maintenance staff: Mark as Done 
   Future<void> _markAsDoneByStaff(BuildContext context) async {
     try {
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).update({
-        'status': 'Being Validated', 
+        'status': 'Being Validated',
         'dateCompletedByStaff': FieldValue.serverTimestamp(),
       });
+
+      // Nofify issuer (Lecturer/hostel supervisor who created it)
+      if (data['issuerID'] != null) {
+        await _sendNotification(
+          userId: data['issuerID'],
+          title: 'Work Completed',
+          body: 'Maintenance staff has finished the work. Please check and verify.',
+        );
+      }
+
+      // nofify supervisor (If one is assigned)
+      if (data['assignedTo'] != null) {
+        await _sendNotification(
+          userId: data['assignedTo'],
+          title: 'Task Pending Validation',
+          body: 'Staff has marked ticket #${ticketId.substring(0, 4)} as complete.',
+        );
+      }
+
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Marked as completed. Waiting for user verification.'), backgroundColor: Colors.blue)
+          const SnackBar(content: Text('Marked as completed. Waiting for verification.'), backgroundColor: Colors.blue)
         );
       }
     } catch (e) {
@@ -54,13 +94,32 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
   }
 
-  // issue action: Verify (Resolve)
+  //issuer action: Verify (Resolve)
   Future<void> _verifyCompletion(BuildContext context) async {
     try {
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).update({
         'status': 'Resolved',
         'dateResolved': FieldValue.serverTimestamp(),
       });
+
+      // Notify maintenance staff
+      if (data['assignedStaffId'] != null) {
+        await _sendNotification(
+          userId: data['assignedStaffId'],
+          title: 'Work Verified!',
+          body: 'Great job! The user has verified and closed the ticket.',
+        );
+      }
+
+      // notify supervisor
+      if (data['assignedTo'] != null) {
+        await _sendNotification(
+          userId: data['assignedTo'],
+          title: 'Ticket Resolved',
+          body: 'Ticket #${ticketId.substring(0, 4)} has been verified and closed.',
+        );
+      }
+
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,12 +131,22 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
   }
 
-  //issuer action: Reject (Send Back)
+  // issuer action: Reject (Send Back) ---
   Future<void> _rejectCompletion(BuildContext context) async {
     try {
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).update({
         'status': 'Needs Recheck',
       });
+
+      // notify maintenance staff
+      if (data['assignedStaffId'] != null) {
+        await _sendNotification(
+          userId: data['assignedStaffId'],
+          title: 'Recheck Needed',
+          body: 'The user rejected the completion. Please recheck the maintenance issue.',
+        );
+      }
+
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,7 +158,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
   }
 
-  //Facilty manager and supervisor logic
+  //facility manager: Reject Ticket
   Future<void> _rejectTicket(BuildContext context) async {
     final String issuerId = data['issuerID'];
     final String description = data['description'] ?? 'Complaint';
@@ -109,14 +178,18 @@ class ComplaintDetailScreen extends StatelessWidget {
     if (confirm != true) return;
 
     try {
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'userId': issuerId,
-        'title': 'Complaint Rejected',
-        'body': 'Your complaint "$description" was rejected by the facility manager.',
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-      });
+      // notify issuer before deleting
+      await _sendNotification(
+        userId: issuerId,
+        title: 'Complaint Rejected',
+        body: 'Your complaint "$description" was rejected by the facility manager.',
+      );
+
+      // Wait a moment for notification to send before deleting
+      await Future.delayed(const Duration(milliseconds: 500));
+
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).delete();
+      
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ticket rejected and deleted.'), backgroundColor: Colors.red));
@@ -126,26 +199,45 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
   }
 
-  //assigning ticket to supervisor
+  // facility manager: Assign to Supervisor
   Future<void> _assignTicket(BuildContext context, String supervisorId, String supervisorName) async {
     try {
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).update({
         'status': 'In Progress', 
-        'assignedTo': supervisorId,
+        'assignedTo': supervisorId, // Supervisor ID
         'assignedToName': supervisorName,
         'dateAssigned': FieldValue.serverTimestamp(),
       });
+
+      //Notify supervisor (They have a new job)
+      await _sendNotification(
+        userId: supervisorId,
+        title: 'New Ticket Assigned',
+        body: 'A new ticket has been assigned to your department.',
+      );
+
+      // 2. notify issuer (lecturer/hostel supervisor who created it) 
+      if (data['issuerID'] != null) {
+        await _sendNotification(
+          userId: data['issuerID'],
+          title: 'Complaint Accepted',
+          body: 'Your complaint has been accepted and assigned to a supervisor.',
+        );
+      }
+
       if (context.mounted) {
-        Navigator.pop(context);
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ticket accepted and assigned to $supervisorName'), backgroundColor: const Color(0xFF12B36A)));
+        Navigator.pop(context); // Close dialog
+        Navigator.pop(context); // Close screen (optional)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Ticket accepted and assigned to $supervisorName'), 
+          backgroundColor: const Color(0xFF12B36A)
+        ));
       }
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
-  //displays supervisors in a dialog box
   void _showSupervisorDialog(BuildContext context, String category) {
     showDialog(
       context: context,
@@ -159,17 +251,25 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-//assigning ticket to maintenance staff
+  // supervisor: Assign to Staff 
   Future<void> _assignToStaff(BuildContext context, String staffId, String staffName) async {
     try {
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).update({
-        'assignedStaffId': staffId,
+        'assignedStaffId': staffId, // Staff ID
         'assignedStaffName': staffName,
         'dateStaffAssigned': FieldValue.serverTimestamp(),
       });
+
+      // nofity maintenance staff (They have a new job)
+      await _sendNotification(
+        userId: staffId,
+        title: 'New Job Assigned',
+        body: 'You have been assigned a new task: "${data['description'] ?? 'Complaint'}"',
+      );
+
       if (context.mounted) {
-        Navigator.pop(context);
-        Navigator.pop(context);
+        Navigator.pop(context); // Close dialog
+        Navigator.pop(context); // Close screen (optional)
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Job assigned to $staffName'), backgroundColor: const Color(0xFF12B36A)));
       }
     } catch (e) {
@@ -177,7 +277,6 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
   }
 
-  //displays maintenance staff in a dialog box
   void _showStaffDialog(BuildContext context, String category) {
     showDialog(
       context: context,
@@ -191,7 +290,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-//selection dialog for supervisors and staff
+  //UI helpers
   Widget _buildSelectionDialog({
     required BuildContext context,
     required String title,
@@ -237,6 +336,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
+  // --- BUILD METHOD ---
   @override
   Widget build(BuildContext context) {
     final Timestamp? timestamp = data['dateCreated'] as Timestamp?;
@@ -289,7 +389,6 @@ class ComplaintDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            //ID and Status
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -302,16 +401,12 @@ class ComplaintDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            //Description
             Text(data['description'] ?? 'No description.', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F312B), height: 1.3)),
             const SizedBox(height: 12),
             Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
             const SizedBox(height: 24),
             const Divider(height: 1),
             const SizedBox(height: 24),
-
-            //Location and Category
             Row(
               children: [
                 _buildInfoTile(icon: Icons.location_on_outlined, label: "Location", value: data['location'] ?? 'Unknown'),
@@ -319,8 +414,6 @@ class ComplaintDetailScreen extends StatelessWidget {
                 _buildInfoTile(icon: Icons.category_outlined, label: "Category", value: category),
               ],
             ),
-
-            //ISSUER INFO (all users sees who created it)
             const SizedBox(height: 20),
             _buildPersonCard(
               title: "Issuer Contact Info",
@@ -329,23 +422,17 @@ class ComplaintDetailScreen extends StatelessWidget {
               isEmail: true,
             ),
 
-            //Assigned Personnel section
-            //user & Supervisor see assigned Maintenance Staff
-            //maintenance Staff see Assigned Supervisor
+            // Re-use logic for showing assigned staff/supervisor
             _buildAssignedPersonnelSection(),
-
             const SizedBox(height: 30),
-
-            //Attachment
             const Text("Attachment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             _buildImageSection(data),
-
             const SizedBox(height: 40),
 
-            //dynamic action buttons
-
-            //Issuer action (Verify / Reject Completion)
+            // Role-Based Action Buttons
+            
+            // ISSUER (Lecturer/Hostel Supervisor) 
             if (isIssuer && status == 'Being Validated')
               Row(
                 children: [
@@ -369,21 +456,19 @@ class ComplaintDetailScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text("Mark as Completed", style: TextStyle(color: Colors.white)),
+                      child: const Text("Verify & Close", style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ],
               ),
 
-            //maintenance staff action (Mark as Done)
+            // MAINTENANCE STAFF ACTIONS
             FutureBuilder<bool>(
               future: _isMaintenanceStaff(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData || !snapshot.data!) return const SizedBox.shrink();
-                
                 bool isAssignedToMe = data['assignedStaffId'] == currentUid;
                 bool isWorkable = status == 'In Progress' || status == 'Needs Recheck';
-
                 if (isAssignedToMe && isWorkable) {
                   return SizedBox(
                     width: double.infinity,
@@ -394,7 +479,7 @@ class ComplaintDetailScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text("Mark as Completed (Send for Validation)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text("Mark as Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   );
                 }
@@ -402,7 +487,7 @@ class ComplaintDetailScreen extends StatelessWidget {
               },
             ),
 
-            //facility manager action (Reject / Accept)
+            // FACILITY MANAGER ACTIONS
             FutureBuilder<bool>(
               future: _isFacilityManager(),
               builder: (context, snapshot) {
@@ -431,7 +516,7 @@ class ComplaintDetailScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text("Accept", style: TextStyle(color: Colors.white)),
+                          child: const Text("Accept & Assign", style: TextStyle(color: Colors.white)),
                         ),
                       ),
                     ],
@@ -441,15 +526,13 @@ class ComplaintDetailScreen extends StatelessWidget {
               },
             ),
 
-            // supervisor action(Assign Staff)
+            // SUPERVISOR ACTIONS
             FutureBuilder<bool>(
               future: _isSupervisor(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData || !snapshot.data!) return const SizedBox.shrink();
-                
                 bool isActionable = ['pending', 'in progress', 'needs recheck'].contains(status.toLowerCase());
                 bool isAssignedToMe = data['assignedTo'] == currentUid;
-
                 if (isActionable && isAssignedToMe) {
                   return SizedBox(
                     width: double.infinity,
@@ -476,33 +559,33 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-  //build Assigned Personnel Section
+  //SUB-WIDGETS
   Widget _buildAssignedPersonnelSection() {
     final assignedStaffId = data['assignedStaffId'];
     final supervisorId = data['assignedTo'];
 
-    //if Issuer or Supervisor: show assigned staff
-    if ((isIssuer || (supervisorId == currentUid)) && assignedStaffId != null) {
-      return _buildAsyncPersonCard(
-        title: "Assigned Maintenance Staff",
-        userId: assignedStaffId,
-        collection: 'maintenance',
-      );
+    List<Widget> cards = [];
+
+    // Show Supervisor card if assigned
+    if (supervisorId != null && (isIssuer || assignedStaffId == currentUid || _isFacilityManagerSync())) {
+      cards.add(_buildAsyncPersonCard(title: "Assigned Supervisor", userId: supervisorId, collection: 'maintenance_supervisors'));
     }
 
-    //if maintenance staff:show my supervisor
-    if (assignedStaffId == currentUid && supervisorId != null) {
-      return _buildAsyncPersonCard(
-        title: "Assigned By (Supervisor)",
-        userId: supervisorId,
-        collection: 'maintenance_supervisors',
-      );
+    // Show Staff card if assigned
+    if (assignedStaffId != null && (isIssuer || supervisorId == currentUid || _isFacilityManagerSync())) {
+      cards.add(const SizedBox(height: 10)); // Spacer
+      cards.add(_buildAsyncPersonCard(title: "Assigned Staff", userId: assignedStaffId, collection: 'maintenance'));
     }
 
-    return const SizedBox.shrink();
+    return Column(children: cards);
   }
 
-  //fetch user data for card
+  // Helper sync check for basic UI Logic (Not secure, just for visual visibility)
+  bool _isFacilityManagerSync() {
+    // For now,assume if you you can see this page, you have permissions.
+    return true; 
+  }
+
   Widget _buildAsyncPersonCard({required String title, required String userId, required String collection}) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection(collection).doc(userId).get(),
@@ -510,44 +593,25 @@ class ComplaintDetailScreen extends StatelessWidget {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final userData = snapshot.data!.data() as Map<String, dynamic>?;
         if (userData == null) return const SizedBox.shrink();
-
         final name = userData['fullName'] ?? 'Unknown';
         final pfp = userData['profilePicture'];
-
         return Column(
           children: [
             const SizedBox(height: 20),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
+                  Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Colors.blue.shade100,
-                        backgroundImage: pfp != null ? NetworkImage(pfp) : null,
-                        child: pfp == null ? const Icon(Icons.person, color: Colors.blue) : null,
-                      ),
+                      CircleAvatar(radius: 20, backgroundColor: Colors.blue.shade100, backgroundImage: pfp != null ? NetworkImage(pfp) : null, child: pfp == null ? const Icon(Icons.person, color: Colors.blue) : null),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ),
+                      Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                     ],
                   ),
                 ],
@@ -559,30 +623,17 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-  //card (for issuer email)
   Widget _buildPersonCard({required String title, required String name, required IconData icon, bool isEmail = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD0E0FF)),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFD0E0FF))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.blue.shade700, size: 20),
-              const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 12)),
-            ],
-          ),
+          Row(children: [Icon(icon, color: Colors.blue.shade700, size: 20), const SizedBox(width: 8), Text(title, style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 12))]),
           const SizedBox(height: 8),
-          isEmail 
-            ? SelectableText(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87))
-            : Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
+          isEmail ? SelectableText(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)) : Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
         ],
       ),
     );

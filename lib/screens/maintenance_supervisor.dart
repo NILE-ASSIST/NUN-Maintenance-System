@@ -16,6 +16,7 @@ class MaintenanceSupervisor extends StatelessWidget {
       backgroundColor: MyApp.nileBlue,
       appBar: AppBar(
         title: const Text("Supervisor Dashboard"),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
@@ -138,9 +139,10 @@ class MaintenanceSupervisor extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.check_circle_outline, size: 60, color: Colors.grey.shade300),
+          Icon(Icons.folder_open_rounded, size: 60, color: Colors.grey.shade300),
+          // Icon(Icons.check_circle_outline, size: 60, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text("All work orders completed!", style: TextStyle(color: Colors.grey, fontSize: 16)),
+          const Text("No tickets available", style: TextStyle(color: Colors.grey, fontSize: 16)),
         ],
       ),
     );

@@ -12,6 +12,7 @@ class FMDashboard extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Facility Manager Dashboard"),
+        centerTitle: true,
         backgroundColor: MyApp.nileBlue,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -29,7 +30,16 @@ class FMDashboard extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No tickets found"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.folder_open_rounded, size: 60, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  const Text("No tickets available", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                ],
+              ),
+            );
           }
 
           // Sort locally to avoid Firestore composite index requirements
@@ -201,7 +211,7 @@ class TicketCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                //Row 2: Description (Main Title)
+                //: Description (Main Title)
                 Text(
                   description,
                   maxLines: 2,

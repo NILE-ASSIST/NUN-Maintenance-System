@@ -40,8 +40,8 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    'Active Work',
-                    style: TextStyle( // Changed title slightly to reflect "In Progress" nature
+                    'All Complaints', // Updated Title
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -49,11 +49,11 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                   ),
                   SizedBox(height: 5),
                   Text(
-                    'Complaints currently being processed',
+                    'History of all your tickets',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.normal,
                     ),
                   ),
                 ],
@@ -84,19 +84,12 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
 
+                    //Get all docs (No filtering)
                     final allDocs = snapshot.data?.docs ?? [];
                     
-                    // --- UPDATED FILTERING LOGIC ---
-                    // Hide 'Resolved' AND 'Pending'
-                    // Show ONLY: 'In Progress', 'Being Validated', 'Needs Recheck'
-                    final complaints = allDocs.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final status = (data['status'] ?? 'Pending').toString();
-                      
-                      return status != 'Resolved' && status != 'Pending'; 
-                    }).toList();
-
-                    // Sort: Newest first
+                    //Sort: Newest first
+                    // We map it to a list so we can sort it without modifying the original snapshot
+                    final complaints = allDocs.toList();
                     complaints.sort((a, b) {
                       final tA = (a.data() as Map<String, dynamic>)['dateCreated'] as Timestamp?;
                       final tB = (b.data() as Map<String, dynamic>)['dateCreated'] as Timestamp?;
@@ -108,6 +101,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     return Column(
                       children: [
                         const SizedBox(height: 20),
+                        // Optional: Search Bar (UI only, logic not implemented yet)
                         SizedBox(
                           width: 340,
                           child: SearchBar(
@@ -118,20 +112,16 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
+                        
                         Expanded(
                           child: complaints.isEmpty
                               ? Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.work_history_outlined, size: 60, color: Colors.grey.shade300),
+                                      Icon(Icons.folder_open_outlined, size: 60, color: Colors.grey.shade300),
                                       const SizedBox(height: 16),
-                                      const Text('No complaints in progress', style: TextStyle(color: Colors.grey)),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        '(Pending tickets are on your Dashboard)',
-                                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                                      ),
+                                      const Text('No ticket history found.', style: TextStyle(color: Colors.grey)),
                                     ],
                                   ),
                                 )
@@ -147,10 +137,15 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                         ? DateFormat('MMM d, yyyy').format(timestamp.toDate())
                                         : 'Unknown';
 
+                                    // Dynamic Colors based on Status
                                     Color statusColor;
                                     Color statusBgColor;
 
                                     switch (status.toString().toLowerCase()) {
+                                      case 'resolved':
+                                        statusColor = Colors.green;
+                                        statusBgColor = Colors.green.withOpacity(0.1);
+                                        break;
                                       case 'in progress':
                                         statusColor = Colors.blue;
                                         statusBgColor = Colors.blue.withOpacity(0.1);
@@ -163,8 +158,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                         statusColor = Colors.red;
                                         statusBgColor = Colors.red.withOpacity(0.1);
                                         break;
-                                      default:
-                                        // Fallback just in case
+                                      default: // Pending
                                         statusColor = Colors.orange;
                                         statusBgColor = Colors.orange.withOpacity(0.1);
                                     }

@@ -14,8 +14,11 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true // Enable desugaring for Java 8+ APIs
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // sourceCompatibility = JavaVersion.VERSION_1_8
+        // targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
@@ -40,6 +43,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Add this required library for desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {
