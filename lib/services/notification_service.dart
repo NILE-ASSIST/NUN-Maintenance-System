@@ -1,12 +1,12 @@
-import 'dart:io'; // <--- Added this import for Platform check
+import 'dart:io'; // Added this import for Platform check
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:nileassist/main.dart'; // Ensure this matches your project name
+import 'package:nileassist/main.dart';
 
-// 1. TOP-LEVEL FUNCTION (Must be outside the class)
+// TOP-LEVEL FUNCTION (Must be outside the class)
 // This handles messages when the app is completely killed
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -66,12 +66,12 @@ class NotificationService {
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       print('User granted permission');
 
-      // 2. Setup Background Handler
+      // Setup Background Handler
       FirebaseMessaging.onBackgroundMessage(
         _firebaseMessagingBackgroundHandler,
       );
 
-      // 3. Get Token (SAFE VERSION FOR IOS SIMULATOR)
+      // Get Token (SAFE VERSION FOR IOS SIMULATOR)
       try {
         String? token;
 
@@ -103,7 +103,7 @@ class NotificationService {
         print("Error getting token: $e");
       }
 
-      // 4. Handle Foreground Messages (App is Open)
+      // Handle Foreground Messages (App is Open)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         print('Got a message whilst in the foreground!');
         if (message.notification != null) {
@@ -113,21 +113,21 @@ class NotificationService {
         }
       });
 
-      // 5. Handle Notification Taps
+      // Handle Notification Taps
       _setupInteractedMessage();
     }
   }
 
   // Handle what happens when user taps the notification
   Future<void> _setupInteractedMessage() async {
-    // A. App was Terminated (Killed) -> User Tapped Notification -> App Opened
+    // App was Terminated (Killed) = User Tapped Notification = App Opens
     RemoteMessage? initialMessage = await _firebaseMessaging
         .getInitialMessage();
     if (initialMessage != null) {
       _handleMessage(initialMessage);
     }
 
-    // B. App was in Background -> User Tapped Notification -> App Resumed
+    // App was in Background = User Tapped Notification = App Resumed
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
@@ -173,8 +173,7 @@ class NotificationService {
     }
   }
 
-  // --- ADD THIS TO notification_service.dart ---
-
+//deletes tokekn from database and on logout
   Future<void> deleteToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
