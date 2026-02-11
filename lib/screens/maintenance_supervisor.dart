@@ -20,6 +20,7 @@ class MaintenanceSupervisor extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
       ),
       body: Container(
         decoration: const BoxDecoration(

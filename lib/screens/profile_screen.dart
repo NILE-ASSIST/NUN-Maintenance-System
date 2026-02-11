@@ -14,8 +14,76 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    // Run this check every time the profile is opened
+    _checkEmailVerification();
+  }
+
+  //SYNC FUNCTION
+  Future<void> _checkEmailVerification() async {
+    //STOP CONDITION:
+    // If the data passed to this screen ALREADY says verified, stop immediately.
+    //
+    if (widget.userData['emailVerified'] == true) {
+      return; 
+    }
+
+    User? user = FirebaseAuth.instance.currentUser;
+    
+    if (user != null) {
+      // 2. Only reload if the local Auth object thinks it's unverified
+      if (!user.emailVerified) {
+         try {
+           await user.reload(); 
+           user = FirebaseAuth.instance.currentUser; 
+         } catch (e) {
+           print("Error reloading user: $e");
+           return;
+         }
+      }
+
+      if (user != null && user.emailVerified) {
+        
+        final role = widget.userData['role'] ?? 'lecturer';
+        final collection = _getCollectionFromRole(role);
+        
+        //Update the Database ONLY once
+        await FirebaseFirestore.instance
+            .collection(collection)
+            .doc(user.uid)
+            .update({'emailVerified': true});
+            
+        print("✅ Sync Complete: Firestore updated to Verified.");
+        
+        // Optional: Force a UI rebuild to show the new status immediately without a full reload
+        if (mounted) {
+          setState(() {
+            // Update local widget data so we don't try to sync again
+            widget.userData['emailVerified'] = true; 
+          });
+        }
+      }
+    }
+  }
+  
+  // Moved helper up so it can be used in build()
+  String _getCollectionFromRole(String role) {
+    if (role == 'maintenance' || role == 'maintenance_staff') return 'maintenance';
+    if (role == 'maintenance_supervisor') return 'maintenance_supervisors';
+    if (role == 'facility_manager') return 'facility_managers';
+    return 'lecturers'; // default
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    // Determine collection to listen to
+    final String role = widget.userData['role'] ?? 'lecturer';
+    final String collection = _getCollectionFromRole(role);
+
     return Scaffold(
       backgroundColor: MyApp.nileBlue,
       appBar: AppBar(
@@ -28,91 +96,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
         centerTitle: false,
         automaticallyImplyLeading: false,
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 20),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                  topRight: Radius.circular(40),
-                ),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
-                child: Column(
-                  children: [
-                    _buildProfileCard(),
-                    const SizedBox(height: 20),
-                    _buildAccountDetailsCard(),
-                    const SizedBox(height: 20),
-                    _buildMenuList(),
-                    const SizedBox(height: 30),
-                    
-                    // Logout Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          //Perform the logout
-                          await AuthService().logout();
-                          
-                          //clear the navigation stack
-                          // This removes 'ProfileScreen' and drops the user back to the 
-                          // root screen, which StreamBuilder will update to the Login/Welcome screen.
-                          if (context.mounted) {
-                            Navigator.of(context).popUntil((route) => route.isFirst);
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.grey),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          backgroundColor: Colors.white,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.logout, color: Colors.red, size: 20),
-                            SizedBox(width: 8),
-                            Text("Log Out", style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
+      //listen to live data changes
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: user != null 
+            ? FirebaseFirestore.instance.collection(collection).doc(user.uid).snapshots() 
+            : const Stream.empty(),
+        builder: (context, snapshot) {
+          // Use live data if available, otherwise fall back to initial widget.userData
+          Map<String, dynamic> liveData = widget.userData;
+          if (snapshot.hasData && snapshot.data!.exists) {
+            liveData = snapshot.data!.data() as Map<String, dynamic>;
+          }
+
+          return Column(
+            children: [
+              const SizedBox(height: 20),
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(40),
+                      topRight: Radius.circular(40),
                     ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+                    child: Column(
+                      children: [
+                        // Pass liveData to widgets
+                        _buildProfileCard(liveData),
+                        const SizedBox(height: 20),
+                        _buildAccountDetailsCard(liveData),
+                        const SizedBox(height: 20),
+                        _buildMenuList(),
+                        const SizedBox(height: 30),
+                        
+                        // Logout Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              await AuthService().logout();
+                              if (context.mounted) {
+                                Navigator.of(context).popUntil((route) => route.isFirst);
+                              }
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.grey),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              backgroundColor: Colors.white,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.logout, color: Colors.red, size: 20),
+                                SizedBox(width: 8),
+                                Text("Log Out", style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _buildProfileCard() {
+  // Updated to accept data map
+  Widget _buildProfileCard(Map<String, dynamic> data) {
     final user = FirebaseAuth.instance.currentUser;
-    // Normalize role string to lowercase to prevent mismatch errors
-    final role = (widget.userData['role'] ?? 'student').toString().toLowerCase();
+    final role = (data['role'] ?? 'student').toString().toLowerCase();
 
-    // --- LOGIC: Decide which field to query based on Role ---
     Stream<QuerySnapshot> getTicketStream() {
       if (user == null) return const Stream.empty();
 
       final ticketsRef = FirebaseFirestore.instance.collection('tickets');
 
       if (role == 'maintenance' || role == 'maintenance_staff') {
-        // Staff: Count tickets assigned specifically to them
         return ticketsRef.where('assignedStaffId', isEqualTo: user.uid).snapshots();
       } else if (role == 'maintenance_supervisor' || role == 'supervisor') {
-        // Supervisor: Count tickets assigned to their queue
         return ticketsRef.where('assignedTo', isEqualTo: user.uid).snapshots();
       } else {
-        // Students/Lecturers: Count tickets they created
         return ticketsRef.where('issuerID', isEqualTo: user.uid).snapshots();
       }
     }
@@ -133,21 +207,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: MyApp.nileBlue,
-            backgroundImage: widget.userData['profilePicture'] != null
-                ? NetworkImage(widget.userData['profilePicture'])
+            backgroundImage: data['profilePicture'] != null
+                ? NetworkImage(data['profilePicture'])
                 : null,
-            child: widget.userData['profilePicture'] == null
+            child: data['profilePicture'] == null
                 ? const Icon(Icons.account_circle, size: 60, color: Colors.white)
                 : null,
           ),
           const SizedBox(height: 10),
           Text(
-            widget.userData['fullName'] ?? 'User',
+            data['fullName'] ?? 'User',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
           ),
           const SizedBox(height: 20),
 
-          // stream builder to get ticket counts
           StreamBuilder<QuerySnapshot>(
             stream: getTicketStream(),
             builder: (context, snapshot) {
@@ -158,7 +231,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final docs = snapshot.data!.docs;
                 totalCount = docs.length.toString();
                 
-                // only counts fully 'Resolved' tickets
                 resolvedCount = docs
                     .where((doc) {
                       final status = (doc.data() as Map)['status']?.toString().toLowerCase() ?? '';
@@ -199,7 +271,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAccountDetailsCard() {
+  // Updated to accept data map
+  Widget _buildAccountDetailsCard(Map<String, dynamic> data) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -213,47 +286,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const Text("Account Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          _buildStaffIdTile(),
+          // Pass the live ID directly
+          _buildStaffIdTile(data['staffId']),
           const SizedBox(height: 20),
-          _buildDetailItem("Email", widget.userData['email'] ?? "", Icons.email_outlined),
+          _buildDetailItem("Email", data['email'] ?? "", Icons.email_outlined),
           const SizedBox(height: 20),
-          if (widget.userData['department'] != null && widget.userData['department'].toString().isNotEmpty)
-            _buildDetailItem("Department", widget.userData['department'], Icons.apartment_outlined),
+          // Check live data for department
+          if (data['department'] != null && data['department'].toString().isNotEmpty)
+            _buildDetailItem("Department", data['department'], Icons.apartment_outlined),
         ],
       ),
     );
   }
 
-  Widget _buildStaffIdTile() {
-    final String currentId = widget.userData['staffId'] ?? 'Pending';
-    if (currentId != 'Pending' && currentId.isNotEmpty) {
-      return _buildDetailItem("Staff ID", currentId, Icons.badge_outlined);
-    }
-    final user = FirebaseAuth.instance.currentUser;
-    // Default to lecturer if role is missing, but adjust collection map in auth service if needed
-    final String role = widget.userData['role'] ?? 'lecturer';
-    // Ensure you have a helper to get collection name, or just hardcode checking based on role
-    final String collection = _getCollectionFromRole(role); 
-
-    return StreamBuilder<DocumentSnapshot>(
-      stream: user != null ? FirebaseFirestore.instance.collection(collection).doc(user.uid).snapshots() : const Stream.empty(),
-      builder: (context, snapshot) {
-        String displayId = currentId;
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          displayId = data['staffId'] ?? 'Pending';
-        }
-        return _buildDetailItem("Staff ID", displayId, Icons.badge_outlined);
-      },
-    );
-  }
-
-  // simple helper to route role to collection
-  String _getCollectionFromRole(String role) {
-    if (role == 'maintenance' || role == 'maintenance_staff') return 'maintenance';
-    if (role == 'maintenance_supervisor') return 'maintenance_supervisors';
-    if (role == 'facility_manager') return 'facility_managers';
-    return 'lecturers'; // default
+  Widget _buildStaffIdTile(String? staffId) {
+    final String displayId = staffId ?? 'Pending';
+    return _buildDetailItem("Staff ID", displayId, Icons.badge_outlined);
   }
 
   Widget _buildDetailItem(String label, String value, IconData icon) {

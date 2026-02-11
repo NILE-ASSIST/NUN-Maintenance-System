@@ -104,6 +104,7 @@ class AuthService {
         TestEmail == '20220459@nileuniversity.edu.ng' ||
         TestEmail == '20220459@nileuniversity.edu.ng' ||
         TestEmail == '20220459@nileuniversity.edu.ng' ||
+        TestEmail == 'amangisundayjr@outlook.com' ||
         TestEmail == 'aduray49@gmail.com';
 
     if (!isTester && !nileStaffRegex.hasMatch(TestEmail)) {

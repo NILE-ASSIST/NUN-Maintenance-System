@@ -22,7 +22,8 @@ class FMDashboard extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('tickets')
-            .where('status', isEqualTo: 'Pending')
+            .where('status', whereIn: ['Pending', 'In Progress'])
+            // .where('status', isEqualTo: 'Pending' || isEqualTo : 'In-Progress')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

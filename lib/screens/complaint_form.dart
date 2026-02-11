@@ -885,6 +885,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:nileassist/main.dart';
 
 // Note: If you have a main.dart with theme colors, you can import it.
 // If not, I have used hardcoded colors below to ensure this file works standalone.
@@ -959,7 +960,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Complaint submitted successfully!'),
-          backgroundColor: const Color(0xFF12B36A), // Nile Green
+          backgroundColor: MyApp.nileGreen, // Nile Green
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1248,7 +1249,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         ),
         const SizedBox(height: 8),
         CategoryDropdown(
-          categories: const ['HVAC', 'Electrical', 'Civil', 'Plumbing', 'Others'],
+          categories: const ['HVAC', 'Electrical', 'Civil', 'Plumbing'],
           selectedValue: _category,
           onChanged: (value) {
             if (value != null) setState(() => _category = value);
@@ -1260,7 +1261,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
   }
 }
 
-// --- HELPER CLASSES (UI COMPONENTS) ---
+// HELPER CLASSES (UI COMPONENTS)
 
 class CategoryDropdown extends StatefulWidget {
   const CategoryDropdown({
