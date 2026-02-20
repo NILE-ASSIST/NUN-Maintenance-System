@@ -172,12 +172,49 @@ class AuthService {
     return user;
   }
 
-  Future<Map<String, dynamic>> loginUser({
-    required String email,
+Future<Map<String, dynamic>> loginUser({
+    required String identifier, // Changed from 'email' to 'identifier'
     required String password,
   }) async {
+    String loginEmail = identifier.trim();
+
+    // user login with staff id
+    if (!loginEmail.contains('@')) {
+      String searchId = loginEmail.toUpperCase();
+      String? foundEmail;
+
+      List<String> searchCollections = [
+        'lecturers',
+        'admins',
+        'facility_managers',
+        'maintenance_supervisors',
+        'maintenance',
+        'hostel_supervisors',
+      ];
+
+      for (String col in searchCollections) {
+        QuerySnapshot query = await _firestore
+            .collection(col)
+            .where('staffId', isEqualTo: searchId)
+            .limit(1)
+            .get();
+            
+        if (query.docs.isNotEmpty) {
+          foundEmail = query.docs.first['email'];
+          break;
+        }
+      }
+
+      if (foundEmail == null) {
+        throw Exception('Staff ID not found. Please check and try again.');
+      }
+      
+      // Swap the Staff ID for the resolved email
+      loginEmail = foundEmail; 
+    }
+
     UserCredential credential = await _auth.signInWithEmailAndPassword(
-      email: email,
+      email: loginEmail, // Now safely passes either the typed email or the resolved email
       password: password,
     );
     User user = credential.user!;

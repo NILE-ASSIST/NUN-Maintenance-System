@@ -93,7 +93,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       if (isLogin) {
         final userData = await _authService.loginUser(
-          email: _emailController.text.trim(),
+          identifier: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
         if (!mounted) return;
@@ -148,12 +148,12 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 30),
 
 
-              const Text('Email'),
+              Text(isLogin ? 'Staff ID' : 'Email'),
               const SizedBox(height: 8),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(hintText: 'Enter your email', prefixIcon: const Icon(Icons.email_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+                decoration: InputDecoration(hintText: isLogin ? 'Enter your email or staff ID' : 'Enter your email', prefixIcon: const Icon(Icons.email_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
               ),
               const SizedBox(height: 20),
 
