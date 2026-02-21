@@ -15,9 +15,6 @@ class AuthService {
     r'^[0-9{9}]+@nileuniversity\.edu\.ng$',
   );
 
-  
-  
-
   // Access codes
   // only users with the codes can create these specific accounts.
   static const Map<String, String> masterCodes = {
@@ -25,7 +22,6 @@ class AuthService {
     'facility_manager': 'NUN-FAC-2026',
     'maintenance_supervisor': 'NUN-SUP-2026',
   };
-
 
   String getCollectionName(String role) {
     switch (role) {
@@ -44,7 +40,7 @@ class AuthService {
     }
   }
 
-//staff id generator
+  //staff id generator
   Future<String> _generateStaffId(String role) async {
     String prefix = 'STF';
     if (role == 'admin') prefix = 'ADM';
@@ -74,8 +70,6 @@ class AuthService {
       return '$prefix-${newCount.toString().padLeft(4, '0')}';
     });
   }
-
-
 
   Future<User?> registerUser({
     required String fullName,
@@ -114,15 +108,13 @@ class AuthService {
             'Access Restricted: Only official @nileuniversity.edu.ng emails are allowed.',
       );
     }
-//prevent all students from registering
+    //prevent all students from registering
     if (nileStudentRegex.hasMatch(email)) {
-    throw FirebaseAuthException(
-      code: 'access-denied',
-      message:
-          'Access Restricted: Student emails are not allowed.',
-    );
-  }
-
+      throw FirebaseAuthException(
+        code: 'access-denied',
+        message: 'Access Restricted: Student emails are not allowed.',
+      );
+    }
 
     //Validate Access Code for Privileged Roles
     if (masterCodes.containsKey(role)) {
@@ -134,45 +126,78 @@ class AuthService {
       }
     }
 
-    //create user
-    UserCredential credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    User user = credential.user!;
-
-    //create firestore profile
-    String collectionName = getCollectionName(role);
-    String staffId = await _generateStaffId(role);
-
-    await _firestore.collection(collectionName).doc(user.uid).set({
-      'uid': user.uid,
-      'staffId': staffId,
-      'fullName': fullName,
-      'email': TestEmail,
-      'role': role,
-      'department': department, // empty for non-maintenance roles
-      'emailVerified': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
+    User? user;
+    String? collectionName;
+    
     try {
-      await user.sendEmailVerification();
-    } catch (e) {
-      // Log error but proceed
-    }
+      //create user
+      UserCredential credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      user = credential.user!;
 
-//save notification token upon registration to ensure notifications work immediately after first login
-    try {
-      await NotificationService().initialize();
-    } catch (e) {
-      print("Warning: Failed to init tokens on register: $e");
-    }
+      //create firestore profile
+      collectionName = getCollectionName(role);
+      String staffId = await _generateStaffId(role);
 
-    return user;
+      await _firestore.collection(collectionName).doc(user.uid).set({
+        'uid': user.uid,
+        'staffId': staffId,
+        'fullName': fullName,
+        'email': TestEmail,
+        'role': role,
+        'department': department, // empty for non-maintenance roles
+        'emailVerified': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      try {
+        await user.sendEmailVerification();
+      } catch (e) {
+        await user.delete(); //deletes user if email fails to send to prevent unverified accounts from being created
+        throw Exception('Failed to send verification email. Please try again.');
+      }
+
+      //save notification token upon registration to ensure notifications work immediately after first login
+      try {
+        await NotificationService().initialize();
+      } catch (e) {
+        print("Warning: Failed to init tokens on register: $e");
+      }
+
+      return user;
+    } catch (e) {
+      //if firestore creation or anything else fails, delete the Auth account
+      if (user != null) {
+        // deletes firestore document created
+        if (collectionName != null) {
+          try {
+            await _firestore.collection(collectionName).doc(user.uid).delete();
+          } catch (fsError) {
+            print("Warning: Failed to delete orphaned Firestore doc: $fsError");
+          }
+        }
+
+        // Delete Firebase Auth user
+        try {
+          await user.delete();
+          print("User account deleted successfully due to registration failure.");
+        } catch (authError) {
+          print("Warning: Failed to delete orphaned Auth account: $authError");
+        }
+      }
+
+      // visual feedback on the UI
+      if (e is FirebaseAuthException) {
+        throw Exception(e.message ?? "Authentication failed.");
+      } else {
+        throw Exception("Registration failed while setting up account. Please try again.");
+      }
+    }
   }
 
-Future<Map<String, dynamic>> loginUser({
+  Future<Map<String, dynamic>> loginUser({
     required String identifier, // Changed from 'email' to 'identifier'
     required String password,
   }) async {
@@ -198,7 +223,7 @@ Future<Map<String, dynamic>> loginUser({
             .where('staffId', isEqualTo: searchId)
             .limit(1)
             .get();
-            
+
         if (query.docs.isNotEmpty) {
           foundEmail = query.docs.first['email'];
           break;
@@ -208,13 +233,14 @@ Future<Map<String, dynamic>> loginUser({
       if (foundEmail == null) {
         throw Exception('Staff ID not found. Please check and try again.');
       }
-      
+
       // Swap the Staff ID for the resolved email
-      loginEmail = foundEmail; 
+      loginEmail = foundEmail;
     }
 
     UserCredential credential = await _auth.signInWithEmailAndPassword(
-      email: loginEmail, // Now safely passes either the typed email or the resolved email
+      email:
+          loginEmail, // Now safely passes either the typed email or the resolved email
       password: password,
     );
     User user = credential.user!;
@@ -248,16 +274,15 @@ Future<Map<String, dynamic>> loginUser({
       throw Exception('User profile not found. Please contact support.');
     }
 
-//ensures that the current device is the active one for notifications and ensures the database has the latest token for the user
-   try {
+    //ensures that the current device is the active one for notifications and ensures the database has the latest token for the user
+    try {
       final notifService = NotificationService();
-      
+
       //setup listeners (background/foreground)
-      notifService.initialize(); 
-      
+      notifService.initialize();
+
       // 2. forces the token into the database immediately
-      await notifService.uploadUserToken(); 
-      
+      await notifService.uploadUserToken();
     } catch (e) {
       print("Warning: Failed to refresh notification token: $e");
     }
@@ -330,7 +355,6 @@ Future<Map<String, dynamic>> loginUser({
   }
 
   Future<void> logout() async {
-    
     //delete notification token before logging out
     try {
       await NotificationService().deleteToken();

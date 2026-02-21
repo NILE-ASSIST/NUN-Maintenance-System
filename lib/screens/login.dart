@@ -148,7 +148,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 30),
 
 
-              Text(isLogin ? 'Staff ID' : 'Email'),
+              Text(isLogin ? 'Email' : 'Email'),
               const SizedBox(height: 8),
               TextField(
                 controller: _emailController,
