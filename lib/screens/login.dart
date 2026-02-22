@@ -116,10 +116,41 @@ class _LoginPageState extends State<LoginPage> {
       }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Authentication failed'), backgroundColor: Colors.red));
+      
+      // change firebase technical error to clear error message
+      String errorMessage = 'Authentication failed. Please try again.';
+      
+      switch (e.code) {
+        case 'invalid-email':
+        case 'invalid-credential':
+          errorMessage = 'Invalid Email, Staff ID, or Password.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This account has been disabled. Contact support.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        default:
+          // Fallback if it's an error we didn't explicitly catch
+          errorMessage = e.message ?? 'An unknown error occurred.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red)
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+      // This catches your custom errors (like "Staff ID not found")
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')), 
+          backgroundColor: Colors.red
+        )
+      );
     } finally {
       if (mounted) setState(() => isLoading = false);
     }

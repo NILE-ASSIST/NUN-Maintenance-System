@@ -121,7 +121,8 @@ class AuthService {
       if (accessCode == null || accessCode.trim() != masterCodes[role]) {
         throw FirebaseAuthException(
           code: 'invalid-access-code',
-          message: 'Invalid or missing Access Code for the role: $role',
+          message: 'Invalid or missing access code',
+          // message: 'Invalid or missing access code for the role: $role',
         );
       }
     }

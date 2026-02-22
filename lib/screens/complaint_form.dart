@@ -952,16 +952,32 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         'imageUrl': downloadUrl, // Save the URL
       };
 
-      // 3. Save to Firestore
-      await FirebaseFirestore.instance.collection('tickets').add(ticketData);
+      // 3. Save to Firestore (and capture the reference to get the ID)
+      DocumentReference ticketRef = await FirebaseFirestore.instance.collection('tickets').add(ticketData);
+
+      // 4. NEW: Trigger Push Notification to Facility Managers
+      try {
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'title': 'New Maintenance Request 🔔',
+          'body': 'A new ${_category} issue has been reported at ${ticketData['location']}.',
+          'userId': null, // Null because we are targeting a group
+          'targetRole': 'facility_manager', // Tells the Cloud Function who to alert
+          'ticketId': ticketRef.id,         // Passes the ID for tap-to-view
+          'type': 'new_ticket',
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        });
+        print("🔔 Alert triggered for Facility Managers.");
+      } catch (e) {
+        print("Failed to trigger Facility Manager notification: $e");
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Complaint submitted successfully!'),
-          backgroundColor: MyApp.nileGreen, // Nile Green
-          behavior: SnackBarBehavior.floating,
+          backgroundColor: MyApp.nileGreen,
         ),
       );
       
