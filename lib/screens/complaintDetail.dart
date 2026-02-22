@@ -40,17 +40,17 @@ class ComplaintDetailScreen extends StatelessWidget {
   Future<void> _sendNotification({
     required String title,
     required String body,
-    required String? userId, // Target User ID
-    String? role,            // Target Role (Optional)
+    required String? userId, // target User ID
+    String? role,            // target Role (Optional)
   }) async {
     if (userId == null && role == null) return;
 
     await FirebaseFirestore.instance.collection('notifications').add({
       'title': title,
       'body': body,
-      'userId': userId,       // Target specific user
-      'targetRole': role,     // Target a whole group (optional)
-      'ticketId': ticketId,   // Link to this ticket
+      'userId': userId,       // target specific user
+      'targetRole': role,     // target a whole group (optional)
+      'ticketId': ticketId,   // link to this ticket
       'createdAt': FieldValue.serverTimestamp(), // for ordering
       'read': false,
     });
@@ -131,7 +131,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
   }
 
-  // issuer action: Reject (Send Back) ---
+  // issuer action: Reject (Send Back)
   Future<void> _rejectCompletion(BuildContext context) async {
     try {
       await FirebaseFirestore.instance.collection('tickets').doc(ticketId).update({
@@ -209,14 +209,14 @@ class ComplaintDetailScreen extends StatelessWidget {
         'dateAssigned': FieldValue.serverTimestamp(),
       });
 
-      //Notify supervisor (They have a new job)
+      //notify supervisor (They have a new job)
       await _sendNotification(
         userId: supervisorId,
         title: 'New Ticket Assigned',
         body: 'A new ticket has been assigned to your department.',
       );
 
-      // 2. notify issuer (lecturer/hostel supervisor who created it) 
+      //notify issuer (lecturer/hostel supervisor who created it) 
       if (data['issuerID'] != null) {
         await _sendNotification(
           userId: data['issuerID'],
@@ -421,18 +421,22 @@ class ComplaintDetailScreen extends StatelessWidget {
               icon: Icons.person_outline,
               isEmail: true,
             ),
-
-            // Re-use logic for showing assigned staff/supervisor
+            
             _buildAssignedPersonnelSection(),
             const SizedBox(height: 30),
+
+            // Status Timeline
+            _buildStatusTimeline(status, data),
+            const SizedBox(height: 30),
+
             const Text("Attachment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             _buildImageSection(data),
             const SizedBox(height: 40),
 
-            // Role-Based Action Buttons
+            // Role-Based action buttons
             
-            // ISSUER (Lecturer/Hostel Supervisor) 
+            // Issuer (Lecturer/Hostel Supervisor) 
             if (isIssuer && status == 'Being Validated')
               Row(
                 children: [
@@ -559,7 +563,118 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-  //SUB-WIDGETS
+  // Status Timeline Widget
+  Widget _buildStatusTimeline(String status, Map<String, dynamic> data) {
+    final s = status.toLowerCase();
+    
+    // Determine active stages
+    final bool isSubmitted = true; // always true if it exists
+    final bool isInProgress = s != 'pending'; // active if past pending
+    final bool isResolved = s == 'resolved';
+
+    // determine who it is assigned to for the subtitle
+    String? assignedName = data['assignedStaffName'] ?? data['assignedToName'];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Status Timeline",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          _buildTimelineStep(
+            title: "Submitted",
+            icon: Icons.description_rounded,
+            isActive: isSubmitted,
+            isLast: false,
+          ),
+          _buildTimelineStep(
+            title: "In Progress",
+            subtitle: isInProgress && assignedName != null ? "Assigned to: $assignedName" : null,
+            icon: Icons.autorenew_rounded,
+            isActive: isInProgress,
+            isLast: false,
+          ),
+          _buildTimelineStep(
+            title: "Resolved",
+            icon: Icons.check_circle_rounded,
+            isActive: isResolved,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineStep({
+    required String title,
+    String? subtitle,
+    required IconData icon,
+    required bool isActive,
+    required bool isLast,
+  }) {
+    // Exact colors matched to your UI design image
+    final boxColor = isActive ? const Color(0xFFDCECC9) : Colors.grey.shade300;
+    final iconColor = isActive ? const Color(0xFF7CB342) : Colors.grey.shade500;
+    final lineColor = isActive ? const Color(0xFF7CB342) : Colors.grey.shade300;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: boxColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 40,
+                color: lineColor,
+              ),
+          ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                ]
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  //sub widget for assigned personnel (Supervisor and Staff)
   Widget _buildAssignedPersonnelSection() {
     final assignedStaffId = data['assignedStaffId'];
     final supervisorId = data['assignedTo'];
@@ -580,9 +695,9 @@ class ComplaintDetailScreen extends StatelessWidget {
     return Column(children: cards);
   }
 
-  // Helper sync check for basic UI Logic (Not secure, just for visual visibility)
+  // helper sync check for basic UI Logic (Not secure, just for visual visibility)
   bool _isFacilityManagerSync() {
-    // For now,assume if you you can see this page, you have permissions.
+    // assume if you you can see this page, you have permissions.
     return true; 
   }
 

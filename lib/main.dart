@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:nileassist/auth/auth_service.dart';
 import 'package:nileassist/screens/gstarted.dart';
-import 'package:nileassist/screens/login.dart';
 import 'package:nileassist/screens/mainLayout.dart';
 import 'package:nileassist/screens/verify_email_screen.dart';
 import 'package:nileassist/screens/uploadProfilePicture.dart';
@@ -20,8 +19,10 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static const Color nileBlue = Color(0xFF1E3DD3);
-  static const Color nileGreen = Color(0xFF8BC34A);
+  static const Color nileBlue = Color.fromARGB(255, 2, 64, 177);
+  static const Color nileGreen = Color(0xFF84C26A);
+  // static const Color nileBlue = Color(0xFF1E3DD3);
+  // static const Color nileGreen = Color(0xFF8BC34A);
 
   // This widget is the root of your application.
   @override
