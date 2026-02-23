@@ -9,6 +9,9 @@ import 'package:nileassist/screens/uploadProfilePicture.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nileassist/services/notification_service.dart';
 
+//navigation key for notifications to navigate to specific screens
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -30,6 +33,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'NileAssist',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
         progressIndicatorTheme: const ProgressIndicatorThemeData(

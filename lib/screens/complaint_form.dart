@@ -36,7 +36,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
     super.dispose();
   }
 
-  // --- SUBMIT LOGIC ---
+  // submit button logic
   Future<void> _submit() async {
     if (_formKey.currentState?.validate() != true) return;
 
@@ -45,6 +45,34 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("User not logged in");
+
+      //construct the location string exactly as it will be saved
+      final locationString = '${_buildingController.text.trim()}, Room ${_roomController.text.trim()}';
+
+      //duplicate complaint logic
+      // query firestore for tickets with the exact same category and location
+      final similarTicketsSnapshot = await FirebaseFirestore.instance
+          .collection('tickets')
+          .where('category', isEqualTo: _category)
+          .where('location', isEqualTo: locationString)
+          .where('status', whereIn: ['Pending', 'In Progress', 'Being Validated', 'Needs Recheck']) // only counts active issues
+          .get();
+
+      final int similarCount = similarTicketsSnapshot.docs.length;
+
+      // prevent submission if 5 exist
+      if (similarCount == 5) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Submission prevented: This issue has already been reported 5 times.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isSubmitting = false);
+        return; 
+      }
+      //end of duplicate complaint logic
 
       String? downloadUrl;
 
@@ -59,11 +87,11 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         downloadUrl = await storageRef.getDownloadURL();
       }
 
-      // 2. Prepare Data
+      // Prepare Data
       final ticketData = {
         'description': _detailsController.text.trim(),
         'category': _category,
-        'location': '${_buildingController.text.trim()}, Room ${_roomController.text.trim()}',
+        'location': locationString,
         'status': 'Pending',
         'dateCreated': FieldValue.serverTimestamp(),
         'issuerID': user.uid,
@@ -72,16 +100,16 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         'imageUrl': downloadUrl, // Save the URL
       };
 
-      // 3. Save to Firestore (and capture the reference to get the ID)
+      // saves to Firestore and capture the reference to get the ID
       DocumentReference ticketRef = await FirebaseFirestore.instance.collection('tickets').add(ticketData);
 
-      // 4. NEW: Trigger Push Notification to Facility Managers
+      //Trigger push notification to Facility Managers
       try {
         await FirebaseFirestore.instance.collection('notifications').add({
-          'title': 'New Maintenance Request 🔔',
+          'title': 'New Maintenance Request',
           'body': 'A new ${_category} issue has been reported at ${ticketData['location']}.',
           'userId': null, // Null because we are targeting a group
-          'targetRole': 'facility_manager', // Tells the Cloud Function who to alert
+          'targetRole': 'facility_manager', // tells the Cloud Function who to alert
           'ticketId': ticketRef.id,         // Passes the ID for tap-to-view
           'type': 'new_ticket',
           'createdAt': FieldValue.serverTimestamp(),
@@ -94,12 +122,22 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Complaint submitted successfully!'),
-          backgroundColor: MyApp.nileGreen,
-        ),
-      );
+//visual feedback for similar complaints count
+      if (similarCount >= 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Submitted successfully: a similar complaint has been submitted previously.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Complaint submitted successfully!'),
+            backgroundColor: MyApp.nileGreen,
+          ),
+        );
+      }
       
       Navigator.pop(context);
 

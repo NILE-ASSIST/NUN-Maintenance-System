@@ -1,13 +1,13 @@
-import 'dart:io'; // Added this import for Platform check
+import 'dart:io'; //for Platform check
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:nileassist/main.dart';
+import 'package:nileassist/screens/complaintDetail.dart';
 
-// TOP-LEVEL FUNCTION (Must be outside the class)
-// This handles messages when the app is completely killed
+//handles messages when the app is completely killed
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("Handling a background message: ${message.messageId}");
@@ -16,8 +16,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
-  // --- ADD THIS NEW FUNCTION ---
-  // Call this immediately after Login to force-save the token
+  // calls this immediately after Login to force-save the token
   Future<void> uploadUserToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -28,7 +27,7 @@ class NotificationService {
     try {
       String? token;
       
-      // 1. Get the token (Platform safe)
+      //Get the token (Platform safe)
       if (Platform.isIOS) {
          String? apns = await _firebaseMessaging.getAPNSToken();
          if (apns != null) {
@@ -38,7 +37,7 @@ class NotificationService {
          token = await _firebaseMessaging.getToken();
       }
 
-      // 2. Save it if found
+      //Save it if found
       if (token != null) {
         print("🔄 Force-updating FCM Token for ${user.email}...");
         await _saveTokenToDatabase(token);
@@ -56,7 +55,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
-    // 1. Request Permission
+    //Request Permission
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
@@ -82,18 +81,18 @@ class NotificationService {
           if (apnsToken != null) {
             token = await _firebaseMessaging.getToken();
           } else {
-            // If APNS is null, we are likely on a Simulator.
-            // We SKIP getting the FCM token so the app doesn't crash.
+            // If APNS is null, app runs on a Simulator.
+            // Skip getting the FCM token so the app doesn't crash.
             print(
               "⚠️ Skipping FCM token: APNS token not available (Simulator detected)",
             );
           }
         } else {
-          // On Android, we can just get the token directly
+          // On android, get the token directly
           token = await _firebaseMessaging.getToken();
         }
 
-        // If we successfully got a token (Real Device / Android), save it.
+        // got a token (Real Device / Android), save it.
         if (token != null) {
           print("✅ FCM Token: $token");
           await _saveTokenToDatabase(token);
@@ -118,7 +117,7 @@ class NotificationService {
     }
   }
 
-  // Handle what happens when user taps the notification
+  // handle what happens when user taps the notification
   Future<void> _setupInteractedMessage() async {
     // App was Terminated (Killed) = User Tapped Notification = App Opens
     RemoteMessage? initialMessage = await _firebaseMessaging
@@ -131,18 +130,37 @@ class NotificationService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
-  void _handleMessage(RemoteMessage message) {
-    if (message.data['ticketId'] != null) {
-      print("User tapped notification for ticket: ${message.data['ticketId']}");
+  Future<void> _handleMessage(RemoteMessage message) async {
+    final String? ticketId = message.data['ticketId'];
 
-      // Navigate to the Complaint Detail Screen using the global key
-      // Ensure you have defined the route '/complaint_details' or similar in main.dart
-      /*
-      navigatorKey.currentState?.pushNamed(
-        '/complaint_detail', 
-        arguments: message.data['ticketId'] // Passing the ID
-      );
-      */
+    if (ticketId != null && ticketId.isNotEmpty) {
+      print("User tapped notification for ticket: $ticketId");
+
+      try {
+        //get the ticket data from Firestore using the ID
+        final docSnapshot = await FirebaseFirestore.instance
+            .collection('tickets')
+            .doc(ticketId)
+            .get();
+
+        if (docSnapshot.exists) {
+          final data = docSnapshot.data() as Map<String, dynamic>;
+
+          //uses the global navigatorKey to push the screen directly
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => ComplaintDetailScreen(
+                ticketId: ticketId,
+                data: data,
+              ),
+            ),
+          );
+        } else {
+          print("Ticket $ticketId no longer exists in the database.");
+        }
+      } catch (e) {
+        print("Error fetching ticket for deep link: $e");
+      }
     }
   }
 
