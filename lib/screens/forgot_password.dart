@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:nileassist/main.dart'; // For MyApp.nileBlue and MyApp.nileGreen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nileassist/main.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -10,34 +10,66 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  // Controllers for the 4 digits
-  final List<TextEditingController> _controllers = List.generate(4, (index) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
+  final _emailController = TextEditingController();
+  bool _isLoading = false;
 
-  @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
-    super.dispose();
-  }
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
 
-  void _onDigitChanged(int index, String value) {
-    if (value.isNotEmpty) {
-      // Move to next field if available
-      if (index < 3) {
-        FocusScope.of(context).requestFocus(_focusNodes[index + 1]);
-      } else {
-        // Last digit entered, dismiss keyboard
-        FocusScope.of(context).unfocus();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email address')),
+      );
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z0-9._]+@nileuniversity\.edu\.ng$', caseSensitive: false).hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid Nile University email address')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset link sent to $email'),
+          backgroundColor: MyApp.nileGreen,
+        ),
+      );
+      
+      // Navigate back to the login screen after successfully sending the email
+      Navigator.of(context).pop();
+
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'An error occurred. Please try again.';
+      
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found for that email.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is badly formatted.';
       }
-    } else {
-      // Backspace pressed, move to previous field if available
-      if (index > 0) {
-        FocusScope.of(context).requestFocus(_focusNodes[index - 1]);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An unexpected error occurred.'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -54,7 +86,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Forgot Password',
+          'Reset Password',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -69,142 +101,87 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
+                  topLeft: Radius.circular(40),
+                  topRight: Radius.circular(40),
                 ),
               ),
               child: SingleChildScrollView(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start, 
                   children: [
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Email Verification',
-                        style: TextStyle(
-                          color: MyApp.nileBlue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 40),
-                    const Text(
-                      'Verify Code',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    const Center(
+                      child: Text(
+                        'Receive an Email',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Please enter the 4 digit code that was sent to\nemail@gmail.com',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 14,
+                    const Center(
+                      child: Text(
+                        'Please enter the email address associated\nwith your account to receive a reset link.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 40),
                     
-                    // OTP Input Fields
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(4, (index) {
-                        return SizedBox(
-                          width: 50,
-                          height: 50,
-                          child: TextFormField(
-                            controller: _controllers[index],
-                            focusNode: _focusNodes[index],
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: MyApp.nileBlue),
-                            inputFormatters: [
-                              LengthLimitingTextInputFormatter(1),
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            onChanged: (value) => _onDigitChanged(index, value),
-                            decoration: InputDecoration(
-                              contentPadding: EdgeInsets.zero,
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Colors.grey),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: MyApp.nileBlue, width: 2),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
+                    // Email Input Field
+                    const Text(
+                      'Email Address',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. @nileuniversity.edu.ng',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
                     ),
 
                     const SizedBox(height: 20),
-                    
-                    // Resend Code
-                    Column(
-                      children: [
-                        const Text(
-                          "Didn't receive OTP?",
-                          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: () {
-                            // Helper logic for resend code
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Resend code clicked')),
-                            );
-                          },
-                          child: const Text(
-                            'Resend code',
-                            style: TextStyle(
-                              color: MyApp.nileBlue,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 40),
-
-                    // Verify Button
+                    // Send Link Button
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 55,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: MyApp.nileGreen,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
+                          elevation: 0,
                         ),
-                        onPressed: () {
-                          String code = _controllers.map((c) => c.text).join();
-                          if (code.length == 4) {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Verifying code: $code')),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter the full 4-digit code')),
-                            );
-                          }
-                        },
-                        child: const Text(
-                          'Verify',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        onPressed: _isLoading ? null : _resetPassword,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                'Send Reset Link',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],
