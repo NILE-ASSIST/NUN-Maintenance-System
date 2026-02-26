@@ -230,6 +230,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
     );
   }
 
+  // Complaint Image Preview Section, Displays selected image before submission, Allows user to remove/change image //
   Widget _buildFormCard() {
     return Form(
         key: _formKey,
