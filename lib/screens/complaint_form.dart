@@ -314,45 +314,117 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
             ),
             const SizedBox(height: 14),
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Attachment Upload',
-                  style: TextStyle(
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(
+      'Attachment Upload',
+      style: TextStyle(
+        color: Colors.grey.shade800,
+        fontWeight: FontWeight.w700,
+        fontSize: 14,
+      ),
+    ),
+    const SizedBox(height: 8),
+
+    InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: _pickAttachment,
+      child: Container(
+        height: _attachmentPath == null ? 116 : 180,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9F9F9),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E3E3)),
+        ),
+        child: _attachmentPath == null
+            // --------- EMPTY STATE ---------
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 40,
+                    color: Colors.black54,
                   ),
-                ),
-                const SizedBox(height: 8),
-                InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: _pickAttachment,
-                  child: Container(
-                    height: 116,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9F9F9),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE3E3E3)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Drop files, browse, or take a photo',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.black54),
-                          const SizedBox(height: 8),
-                          Text(
-                            _attachmentName ?? 'Drop files, browse, or take a photo',
-                            style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                  ),
+                ],
+              )
+
+            // --------- PREVIEW STATE ---------
+            : Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.file(
+                      File(_attachmentPath!),
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+
+                  // Slight dark overlay
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.black.withOpacity(0.15),
+                    ),
+                  ),
+
+                  // File name at bottom
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Text(
+                      _attachmentName ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+
+                  // Remove button
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _attachmentName = null;
+                          _attachmentPath = null;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    ),
+  ],
+),
             const SizedBox(height: 18),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
