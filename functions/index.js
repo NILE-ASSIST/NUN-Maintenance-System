@@ -140,3 +140,74 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
     
     return null;
 });
+
+//Specific Reminder function for Supervisors
+exports.remindSupervisorsUnassigned = onSchedule(
+  {
+    schedule: "every 24 hours",
+    timeZone: "Africa/Lagos",
+  },
+  async () => {
+    
+    const threeDaysAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    );
+
+    
+    const ticketsSnapshot = await admin.firestore()
+      .collection("tickets")
+      .where("assignedTo", "==", null) // Still waiting for a maintenance staff
+      .where("dateCreated", "<=", threeDaysAgo) // 3 days old or older
+      .get();
+
+    if (ticketsSnapshot.empty) {
+      console.log("No 3-day unassigned tickets found.");
+      return null;
+    }
+
+  
+    for (const doc of ticketsSnapshot.docs) {
+      const data = doc.data();
+      
+      // If no supervisor has claimed or been given this ticket yet, skip it
+      if (!data.supervisorId) continue;
+
+     
+      const supervisorDoc = await admin.firestore()
+        .collection("maintenance_supervisors")
+        .doc(data.supervisorId)
+        .get();
+
+      if (!supervisorDoc.exists) continue;
+
+      const token = supervisorDoc.data().fcmToken;
+      if (!token) continue;
+
+      // sends the targeted notification to just that one supervisor
+      await admin.messaging().send({
+        token: token,
+        notification: {
+          title: "Unassigned Ticket Reminder",
+          body: "A complaint you are managing has not been assigned to a maintenance staff for 3 days. Kindly assign the ticket",
+        },
+        android: {
+          priority: "high",
+          notification: { sound: "default" },
+        },
+        apns: {
+          payload: {
+            aps: { sound: "default" },
+          },
+        },
+        data: {
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+          ticketId: doc.id, // Allows them to tap and open the exact ticket
+          type: "unassigned_reminder",
+        }
+      });
+    }
+
+    console.log("3-day specific supervisor reminder job completed.");
+    return null;
+  }
+);
