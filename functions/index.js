@@ -8,7 +8,6 @@
  */
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { onSchedule } = require("firebase-functions/v2/scheduler"); 
 const admin = require("firebase-admin");
 
 // Initialize the Firebase Admin SDK (check to prevent double initialization)
@@ -16,12 +15,11 @@ if (!admin.apps.length) {
     admin.initializeApp();
 }
 
-
-
 exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async (event) => {
-   
+    // In Gen 2, 'event.data' is the document snapshot
     const snapshot = event.data;
     
+    // Check if the document actually exists
     if (!snapshot) {
         console.log("No data associated with the event");
         return;
@@ -31,7 +29,7 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
     const userId = newData.userId;
     const targetRole = newData.targetRole; 
 
-    
+    // Prepare the notification payload
     const payload = {
         notification: {
             title: newData.title || "New Notification",
@@ -43,7 +41,7 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
                 sound: "default", 
             }
         },
-        // Force iOS to play the default chime
+        // NEW: Force iOS to play the default chime
         apns: {
             payload: {
                 aps: {
@@ -60,8 +58,9 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
 
     const tokens = [];
 
-    
+    // --- LOGIC BRANCH 1: Send to a specific User ---
     if (userId) {
+        // Notice: 'students' has been removed from this list
         const collections = ["lecturers", "facility_managers", "maintenance_supervisors", "maintenance", "admins", "hostel_supervisors"];
         
         for (const col of collections) {
@@ -73,12 +72,12 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
             }
         }
     } 
-  
+    // --- LOGIC BRANCH 2: Send to a Group (Role-Based) ---
     else if (targetRole) {
         console.log(`Processing Group Notification for Role: ${targetRole}`);
         let targetCollection = "";
         
-      
+        // Map the targetRole to your exact Firestore collection names
         if (targetRole === "facility_manager") targetCollection = "facility_managers";
         else if (targetRole === "admin") targetCollection = "admins";
         else if (targetRole === "maintenance_supervisor") targetCollection = "maintenance_supervisors";
@@ -88,13 +87,13 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
 
         if (targetCollection !== "") {
             try {
-            
+                // Fetch EVERY user in that collection
                 const roleSnapshot = await admin.firestore().collection(targetCollection).get();
                 
                 if (!roleSnapshot.empty) {
                     roleSnapshot.forEach(doc => {
                         const data = doc.data();
-                        // get the token from the exact field name in your database
+                        // Grab the token from the exact field name in your database
                         if (data.fcmToken) {
                             tokens.push(data.fcmToken);
                         }
@@ -113,22 +112,22 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
         console.log("No specific userId or targetRole provided. Cannot determine recipient.");
     }
 
-   
+    // Stop and exit if no tokens were found
     if (tokens.length === 0) {
         console.log("No valid tokens found. Notification will not be sent.");
         return null;
     }
 
-  
+    // Prepare the messages using the new sendEach API
     const messages = tokens.map(token => ({
         token: token,
         notification: payload.notification,
         data: payload.data,
-        apns: payload.apns,       
-        android: payload.android, 
+        apns: payload.apns,       // pass iOS settings
+        data: payload.data,
     }));
 
-   
+    // Send the messages
     try {
         const response = await admin.messaging().sendEach(messages);
         console.log(`Successfully sent ${response.successCount} messages.`);
@@ -141,8 +140,6 @@ exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async 
     
     return null;
 });
-
-
 
 //Specific Reminder function for Supervisors
 exports.remindSupervisorsUnassigned = onSchedule(
