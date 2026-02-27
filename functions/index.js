@@ -6,140 +6,178 @@
  *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
+
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onSchedule } = require("firebase-functions/v2/scheduler"); 
 const admin = require("firebase-admin");
 
-// Initialize only once
+// Initialize the Firebase Admin SDK (check to prevent double initialization)
 if (!admin.apps.length) {
-  admin.initializeApp();
+    admin.initializeApp();
 }
 
-/* ===========================
-   PUSH NOTIFICATION FUNCTION
-=========================== */
 
-exports.sendPushNotification = onDocumentCreated(
-  "notifications/{docId}",
-  async (event) => {
 
+exports.sendPushNotification = onDocumentCreated("notifications/{docId}", async (event) => {
+   
     const snapshot = event.data;
+    
     if (!snapshot) {
-      console.log("No data associated with event");
-      return;
+        console.log("No data associated with the event");
+        return;
     }
 
     const newData = snapshot.data();
     const userId = newData.userId;
-    const targetRole = newData.targetRole;
+    const targetRole = newData.targetRole; 
 
+    
     const payload = {
-      notification: {
-        title: newData.title || "New Notification",
-        body: newData.body || "You have a new alert.",
-      },
-      android: {
-        priority: "high",
-        notification: { sound: "default" },
-      },
-      apns: {
-        payload: {
-          aps: { sound: "default" },
+        notification: {
+            title: newData.title || "New Notification",
+            body: newData.body || "You have a new alert.",
         },
-      },
-      data: {
-        click_action: "FLUTTER_NOTIFICATION_CLICK",
-        ticketId: newData.ticketId || "",
-        type: newData.type || "general_notification",
-      },
+        android: {
+            priority: "high", 
+            notification: {
+                sound: "default", 
+            }
+        },
+        // Force iOS to play the default chime
+        apns: {
+            payload: {
+                aps: {
+                    sound: "default",
+                }
+            }
+        },
+        data: {
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+            ticketId: newData.ticketId || "",
+            type: newData.type || "general_notification", 
+        },
     };
 
     const tokens = [];
 
+    
     if (userId) {
-      const collections = [
-        "lecturers",
-        "facility_managers",
-        "maintenance_supervisors",
-        "maintenance",
-        "admins",
-        "hostel_supervisors",
-      ];
-
-      for (const col of collections) {
-        const userDoc = await admin.firestore().collection(col).doc(userId).get();
-        if (userDoc.exists && userDoc.data().fcmToken) {
-          tokens.push(userDoc.data().fcmToken);
-          break;
+        const collections = ["lecturers", "facility_managers", "maintenance_supervisors", "maintenance", "admins", "hostel_supervisors"];
+        
+        for (const col of collections) {
+            const userDoc = await admin.firestore().collection(col).doc(userId).get();
+            if (userDoc.exists && userDoc.data().fcmToken) {
+                tokens.push(userDoc.data().fcmToken);
+                console.log(`Found token for specific user in ${col}`);
+                break; 
+            }
         }
-      }
-    } else if (targetRole) {
+    } 
+  
+    else if (targetRole) {
+        console.log(`Processing Group Notification for Role: ${targetRole}`);
+        let targetCollection = "";
+        
+      
+        if (targetRole === "facility_manager") targetCollection = "facility_managers";
+        else if (targetRole === "admin") targetCollection = "admins";
+        else if (targetRole === "maintenance_supervisor") targetCollection = "maintenance_supervisors";
+        else if (targetRole === "maintenance_staff" || targetRole === "maintenance") targetCollection = "maintenance";
+        else if (targetRole === "lecturer") targetCollection = "lecturers";
+        else if (targetRole === "hostel_supervisor") targetCollection = "hostel_supervisors";
 
-      let targetCollection = "";
-
-      if (targetRole === "facility_manager") targetCollection = "facility_managers";
-      else if (targetRole === "admin") targetCollection = "admins";
-      else if (targetRole === "maintenance_supervisor") targetCollection = "maintenance_supervisors";
-      else if (targetRole === "maintenance_staff" || targetRole === "maintenance") targetCollection = "maintenance";
-      else if (targetRole === "lecturer") targetCollection = "lecturers";
-      else if (targetRole === "hostel_supervisor") targetCollection = "hostel_supervisors";
-
-      if (targetCollection) {
-        const roleSnapshot = await admin.firestore().collection(targetCollection).get();
-        roleSnapshot.forEach(doc => {
-          if (doc.data().fcmToken) {
-            tokens.push(doc.data().fcmToken);
-          }
-        });
-      }
+        if (targetCollection !== "") {
+            try {
+            
+                const roleSnapshot = await admin.firestore().collection(targetCollection).get();
+                
+                if (!roleSnapshot.empty) {
+                    roleSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        // get the token from the exact field name in your database
+                        if (data.fcmToken) {
+                            tokens.push(data.fcmToken);
+                        }
+                    });
+                    console.log(`Found ${tokens.length} tokens for role ${targetRole}`);
+                } else {
+                    console.log(`No users found in collection: ${targetCollection}`);
+                }
+            } catch (error) {
+                console.error(`Error fetching tokens for role ${targetRole}:`, error);
+            }
+        } else {
+            console.log(`Unknown targetRole provided: ${targetRole}`);
+        }
+    } else {
+        console.log("No specific userId or targetRole provided. Cannot determine recipient.");
     }
 
+   
     if (tokens.length === 0) {
-      console.log("No tokens found.");
-      return null;
+        console.log("No valid tokens found. Notification will not be sent.");
+        return null;
     }
 
+  
     const messages = tokens.map(token => ({
-      token,
-      notification: payload.notification,
-      data: payload.data,
-      apns: payload.apns,
-      android: payload.android,
+        token: token,
+        notification: payload.notification,
+        data: payload.data,
+        apns: payload.apns,       
+        android: payload.android, 
     }));
 
-    await admin.messaging().sendEach(messages);
-
-    console.log("Push notification sent.");
+   
+    try {
+        const response = await admin.messaging().sendEach(messages);
+        console.log(`Successfully sent ${response.successCount} messages.`);
+        if (response.failureCount > 0) {
+            console.log(`Failed to send ${response.failureCount} messages.`);
+        }
+    } catch (error) {
+        console.log("Error sending multicast message:", error);
+    }
+    
     return null;
-  }
-);
+});
 
-/* 2-DAY REMINDER FUNCTION */
 
+
+//Specific Reminder function for Supervisors
 exports.remindSupervisorsUnassigned = onSchedule(
   {
     schedule: "every 24 hours",
     timeZone: "Africa/Lagos",
   },
   async () => {
-
-    const twoDaysAgo = admin.firestore.Timestamp.fromDate(
-      new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    
+    const threeDaysAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
     );
 
-    const complaintsSnapshot = await admin.firestore()
-      .collection("complaints")
-      .where("status", "==", "pending")
-      .where("assignedTo", "==", null)
-      .where("createdAt", "<=", twoDaysAgo)
+    
+    const ticketsSnapshot = await admin.firestore()
+      .collection("tickets")
+      .where("assignedTo", "==", null) // Still waiting for a maintenance staff
+      .where("dateCreated", "<=", threeDaysAgo) // 3 days old or older
       .get();
 
-    for (const doc of complaintsSnapshot.docs) {
+    if (ticketsSnapshot.empty) {
+      console.log("No 3-day unassigned tickets found.");
+      return null;
+    }
+
+  
+    for (const doc of ticketsSnapshot.docs) {
       const data = doc.data();
+      
+      // If no supervisor has claimed or been given this ticket yet, skip it
       if (!data.supervisorId) continue;
 
+     
       const supervisorDoc = await admin.firestore()
-        .collection("users")
+        .collection("maintenance_supervisors")
         .doc(data.supervisorId)
         .get();
 
@@ -148,16 +186,31 @@ exports.remindSupervisorsUnassigned = onSchedule(
       const token = supervisorDoc.data().fcmToken;
       if (!token) continue;
 
+      // sends the targeted notification to just that one supervisor
       await admin.messaging().send({
-        token,
+        token: token,
         notification: {
-          title: "Assignment Reminder",
-          body: "A complaint has not been assigned for 2 days.",
+          title: "Unassigned Ticket Reminder",
+          body: "A complaint you are managing has not been assigned to a maintenance staff for 3 days. Kindly assign the ticket",
         },
+        android: {
+          priority: "high",
+          notification: { sound: "default" },
+        },
+        apns: {
+          payload: {
+            aps: { sound: "default" },
+          },
+        },
+        data: {
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+          ticketId: doc.id, // Allows them to tap and open the exact ticket
+          type: "unassigned_reminder",
+        }
       });
     }
 
-    console.log("Reminder job completed.");
+    console.log("3-day specific supervisor reminder job completed.");
     return null;
   }
 );
