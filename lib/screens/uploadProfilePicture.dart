@@ -5,7 +5,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/mainLayout.dart';
-import 'package:nileassist/screens/maintenance.dart';
 
 class UploadProfileScreen extends StatefulWidget {
   final String userId;

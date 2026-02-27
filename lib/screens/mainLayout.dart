@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nileassist/auth/auth_service.dart';
 import 'package:nileassist/screens/admin.dart';
 import 'package:nileassist/screens/complaint_screen.dart';
 import 'package:nileassist/screens/maintenance_supervisor.dart';
@@ -32,7 +31,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   Widget _getHomeForRole() {
     String role = widget.userData['role'];
-    String fullName = widget.userData['fullName'];
+    // String fullName = widget.userData['fullName'];
 
     switch (role) {
       case 'admin':

@@ -3,7 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/complaintDetail.dart';
 
@@ -51,8 +51,8 @@ class NotificationService {
   }
 
   // Setup local notifications for Foreground display
-  final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
+  // final FlutterLocalNotificationsPlugin _localNotifications =
+  //     FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
     //Request Permission
