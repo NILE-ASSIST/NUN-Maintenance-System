@@ -331,6 +331,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
       borderRadius: BorderRadius.circular(14),
       onTap: _pickAttachment,
       child: Container(
+        height: 130,
        width: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0xFFF9F9F9),
