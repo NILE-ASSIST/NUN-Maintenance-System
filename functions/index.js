@@ -8,6 +8,7 @@
  */
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
 // Initialize the Firebase Admin SDK (check to prevent double initialization)
@@ -156,7 +157,6 @@ exports.remindSupervisorsUnassigned = onSchedule(
     
     const ticketsSnapshot = await admin.firestore()
       .collection("tickets")
-      .where("assignedTo", "==", null) // Still waiting for a maintenance staff
       .where("dateCreated", "<=", threeDaysAgo) // 3 days old or older
       .get();
 
@@ -170,12 +170,16 @@ exports.remindSupervisorsUnassigned = onSchedule(
       const data = doc.data();
       
       // If no supervisor has claimed or been given this ticket yet, skip it
-      if (!data.supervisorId) continue;
+      if (data.status === "Resolved" || data.status === "Completed") continue;
+
+      if (!data.assignedTo) continue;
+
+      if (data.assignedStaffid) continue;
 
      
       const supervisorDoc = await admin.firestore()
         .collection("maintenance_supervisors")
-        .doc(data.supervisorId)
+        .doc(data.assignedTo)
         .get();
 
       if (!supervisorDoc.exists) continue;
