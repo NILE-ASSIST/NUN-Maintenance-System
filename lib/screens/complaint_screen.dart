@@ -102,15 +102,25 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                       children: [
                         const SizedBox(height: 20),
                         // Optional: Search Bar (UI only, logic not implemented yet)
-                        SizedBox(
-                          width: 340,
-                          child: SearchBar(
-                            hintText: 'Search by id, title, or category',
-                            backgroundColor: WidgetStateProperty.all(Colors.grey[200]),
-                            elevation: WidgetStateProperty.all(0),
-                            leading: const Icon(Icons.search, color: Colors.grey),
+                        Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Container(
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const TextField(
+                          decoration: InputDecoration(
+                            hintText: "Search by id or category",
+                            hintStyle: TextStyle(color: Colors.grey),
+                            prefixIcon: Icon(Icons.search, color: Colors.grey),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
+                      ),
+                    ),
                         const SizedBox(height: 20),
                         
                         Expanded(

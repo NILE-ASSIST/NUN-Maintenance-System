@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/admin.dart';
+import 'package:nileassist/screens/chat.dart';
 import 'package:nileassist/screens/complaint_screen.dart';
 import 'package:nileassist/screens/maintenance_supervisor.dart';
 import 'package:nileassist/screens/profile_screen.dart';
@@ -18,20 +22,19 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
-  late PageController _pageController; //Controller for the swipeable area
+  late PageController _pageController; // Controller for the swipeable area
   
   final Color nileBlue = const Color(0xFF1E3DD3);
 
   @override
   void initState() {
     super.initState();
-    //Initialize the controller
+    // Initialize the controller
     _pageController = PageController(initialPage: _currentIndex);
   }
 
   Widget _getHomeForRole() {
     String role = widget.userData['role'];
-    // String fullName = widget.userData['fullName'];
 
     switch (role) {
       case 'admin':
@@ -51,7 +54,7 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  //Update the bottom nav when the user swipes
+  // Update the bottom nav when the user swipes
   void _onPageChanged(int index) {
     setState(() {
       _currentIndex = index;
@@ -66,36 +69,92 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
+Widget _buildChatIcon() {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return const Icon(Icons.chat_outlined);
+
+  final ticketsRef = FirebaseFirestore.instance.collection('tickets');
+
+  return StreamBuilder<QuerySnapshot>(
+    stream: ticketsRef.snapshots(),
+    builder: (context, snapshot) {
+      bool hasUnread = false;
+
+      if (snapshot.hasData) {
+        for (var doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          if (data['unreadBy'] == user.uid ||
+              data['unreadBy_internal'] == user.uid) {
+            hasUnread = true;
+            break;
+          }
+        }
+      }
+
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.chat_outlined),
+          if (hasUnread)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: MyApp.nileGreen,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 0.5),
+                ),
+              ),
+            ),
+        ],
+      );
+    },
+  );
+}
+
   @override
   Widget build(BuildContext context) {
+    bool isFacilityManager = widget.userData['role'] == 'facility_manager';
+    bool isAdmin = widget.userData['role'] == 'admin';
+
     return Scaffold(
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
         children: [
-          _getHomeForRole(),           
+          _getHomeForRole(),
           ComplaintScreen(),
-          // const Center(child: Text("Complaints Screen")),
+          if (!isFacilityManager && !isAdmin) ChatScreen(userData: widget.userData),
           ProfileScreen(userData: widget.userData),
         ],
       ),
       
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
         currentIndex: _currentIndex,
         selectedItemColor: nileBlue,
         unselectedItemColor: Colors.grey,
-        onTap: _onBottomNavTapped, //Update to use the animation method
-        items: const [
-          BottomNavigationBarItem(
+        onTap: _onBottomNavTapped, 
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             label: "Home",
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.confirmation_number_outlined),
             label: "Complaints",
           ),
-          BottomNavigationBarItem(
+          if (!isFacilityManager && !isAdmin)
+            BottomNavigationBarItem(
+              icon: _buildChatIcon(),
+              label: "Chats",
+            ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: "Profile",
           ),

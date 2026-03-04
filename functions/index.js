@@ -215,3 +215,110 @@ exports.remindSupervisorsUnassigned = onSchedule(
     return null;
   }
 );
+
+//Chat notifications
+exports.sendChatMessageNotification = onDocumentCreated(
+  "tickets/{ticketId}/{chatType}/{messageId}", //listens to both chat folders dynamically
+  async (event) => {
+    const chatType = event.params.chatType;
+    
+    //ignore anything that isn't the two specific chat folders
+    if (chatType !== "messages" && chatType !== "supervisor_messages") return null;
+
+    //gets the new message data
+    const messageData = event.data.data();
+    const senderId = messageData.senderId;
+    const text = messageData.text;
+    const ticketId = event.params.ticketId;
+
+    //gets the parent ticket to find out who the two participants are
+    const ticketSnap = await admin.firestore().collection("tickets").doc(ticketId).get();
+    if (!ticketSnap.exists) return null;
+    
+    const ticketData = ticketSnap.data();
+
+    //who receives the notification
+    let targetId = null;
+    let senderName = "Someone";
+
+    //routes the notification based on which chat room they are in
+    if (chatType === "messages") {
+        const issuerId = ticketData.issuerID;
+        const staffId = ticketData.assignedStaffId;
+
+        //if the sender is the user, notify the Staff
+        if (senderId === issuerId) {
+            targetId = staffId;
+            senderName = ticketData.issuerName || ticketData.issuerEmail || "User"; 
+        } 
+        //if the sender is the Staff, notify the user
+        else if (senderId === staffId) {
+            targetId = issuerId;
+            senderName = ticketData.assignedStaffName || "Maintenance Staff";
+        }
+    } 
+    else if (chatType === "supervisor_messages") {
+        const supervisorId = ticketData.assignedTo;
+        const staffId = ticketData.assignedStaffId;
+
+        //if the sender is the Supervisor, notify the Staff
+        if (senderId === supervisorId) {
+            targetId = staffId;
+            senderName = "Supervisor"; 
+        } 
+        //if the sender is the Staff, notify the Supervisor
+        else if (senderId === staffId) {
+            targetId = supervisorId;
+            senderName = ticketData.assignedStaffName || "Maintenance Staff";
+        }
+    }
+
+    //if we couldn't match a target (or a ghost sent it), abort
+    if (!targetId) return null;
+
+    //track the target user's FCM Token
+    //checks all possible user collections to find where this target ID lives
+    let token = null;
+    const collections = ['maintenance', 'maintenance_supervisors', 'lecturers', 'hostel_supervisors'];
+
+    for (const col of collections) {
+        const userSnap = await admin.firestore().collection(col).doc(targetId).get();
+        if (userSnap.exists && userSnap.data().fcmToken) {
+            token = userSnap.data().fcmToken;
+            break; 
+        }
+    }
+
+    //if the user hasn't logged in recently to save a token, abort
+    if (!token) {
+        console.log(`No FCM token found for target user: ${targetId}`);
+        return null;
+    }
+
+    //create and send the push notification
+    const payload = {
+        token: token,
+        notification: {
+            title: `New message from ${senderName}`,
+            body: text.length > 50 ? text.substring(0, 50) + '...' : text,
+        },
+        android: {
+            priority: "high",
+            notification: { sound: "default" },
+        },
+        apns: {
+            payload: { aps: { sound: "default" } },
+        },
+        data: {
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+            type: "chat_message",
+            ticketId: ticketId, // know exactly which chat room to open
+            targetId: senderId, //tells Flutter the ID of the person who sent it
+            targetName: senderName, //tell the name to put at the top of the screen
+            chatCollection: chatType
+        }
+    };
+
+    return admin.messaging().send(payload);
+  }
+);

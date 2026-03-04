@@ -8,9 +8,13 @@ import 'package:nileassist/screens/verify_email_screen.dart';
 import 'package:nileassist/screens/uploadProfilePicture.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nileassist/services/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:nileassist/screens/chat_detail.dart';
 
 //navigation key for notifications to navigate to specific screens
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+// Add this global key so we can navigate from background notifications
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,13 +31,50 @@ class MyApp extends StatelessWidget {
   // static const Color nileBlue = Color(0xFF1E3DD3);
   // static const Color nileGreen = Color(0xFF8BC34A);
 
+  Future<void> setupNotificationRouting() async {
+  //Handle the app being opened from a completely closed (terminated) state
+  RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  if (initialMessage != null) {
+    _handleNotificationClick(initialMessage);
+  }
+
+  //Handle the app being opened from the background
+  FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationClick);
+}
+
+void _handleNotificationClick(RemoteMessage message) {
+  // Check if this notification is specifically a chat message
+  if (message.data['type'] == 'chat_message') {
+    final ticketId = message.data['ticketId'];
+    final targetId = message.data['targetId'];
+    final targetName = message.data['targetName'];
+    
+    //Grab the specific chat folder from the notification payload
+    final chatCollection = message.data['chatCollection'] ?? 'messages'; 
+
+    //Use Global Key to push to the chatDetail screen
+    globalNavigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => ChatDetail(
+          ticketId: ticketId ?? '',
+          targetName: targetName ?? 'Chat',
+          targetId: targetId ?? '',
+          currentUserData: const {}, // We can pass empty here since ChatDetail uses _auth.currentUser
+          chatCollection: chatCollection, //passes the folder name so it opens the right chat
+        ),
+      ),
+    );
+  }
+}
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'NileAssist',
-      navigatorKey: navigatorKey,
+      // navigatorKey: navigatorKey,
+      navigatorKey: globalNavigatorKey,
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
         progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -58,7 +99,6 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: nileBlue),
         // colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      // home: WelcomeScreen(),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.userChanges(),
         builder: (context, snapshot) {

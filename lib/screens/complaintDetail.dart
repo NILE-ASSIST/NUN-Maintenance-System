@@ -416,8 +416,9 @@ class ComplaintDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             _buildPersonCard(
-              title: "Issuer Contact Info",
-              name: data['issuerEmail'] ?? 'No email',
+              title: "Issuer Info",
+              name: data['issuerName'] ?? 'No name',
+              role: data['issuerRole'] ?? 'Unknown role',
               icon: Icons.person_outline,
               isEmail: true,
             ),
@@ -738,7 +739,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonCard({required String title, required String name, required IconData icon, bool isEmail = false}) {
+  Widget _buildPersonCard({required String title, required String name, required role, required IconData icon, bool isEmail = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -749,6 +750,7 @@ class ComplaintDetailScreen extends StatelessWidget {
           Row(children: [Icon(icon, color: Colors.blue.shade700, size: 20), const SizedBox(width: 8), Text(title, style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 12))]),
           const SizedBox(height: 8),
           isEmail ? SelectableText(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)) : Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
+          isEmail ? SelectableText(role, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.grey)) : Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
         ],
       ),
     );

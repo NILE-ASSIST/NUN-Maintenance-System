@@ -87,6 +87,26 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         downloadUrl = await storageRef.getDownloadURL();
       }
 
+      String userName = 'Unknown User';
+      String userRole = 'Unknown Role';
+      
+      //Search database collections to find this user's fullname and role
+      final collections = ['lecturers', 'hostel_supervisors'];
+      for (final col in collections) {
+        final userDoc = await FirebaseFirestore.instance.collection(col).doc(user.uid).get();
+        if (userDoc.exists) {
+          final dbData = userDoc.data()!;
+          //get user's fullname
+          userName = dbData['name'] ?? dbData['fullName'] ?? "${dbData['firstName'] ?? ''} ${dbData['lastName'] ?? ''}".trim();
+          if (userName.isEmpty) userName = 'Unknown User';
+          
+          //get user role
+          userRole = dbData['role'] ?? 'Unknown Role';
+          
+          break; // We found the user, so stop searching!
+        }
+      }
+
       // Prepare Data
       final ticketData = {
         'description': _detailsController.text.trim(),
@@ -95,7 +115,9 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         'status': 'Pending',
         'dateCreated': FieldValue.serverTimestamp(),
         'issuerID': user.uid,
-        'issuerEmail': user.email,
+        // 'issuerEmail': user.email ?? 'Unknown User',
+        'issuerName': userName,
+        'issuerRole': userRole,
         'attachmentName': _attachmentName,
         'imageUrl': downloadUrl, // Save the URL
       };
