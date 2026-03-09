@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nileassist/main.dart';
 
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -23,7 +24,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    if (!RegExp(r'^[a-zA-Z0-9._]+@nileuniversity\.edu\.ng$', caseSensitive: false).hasMatch(email)) {
+    //test accounts
+    bool isTester =
+        email == 'sundayamangijnr@gmail.com' ||
+        email == 'techwithamangi@gmail.com' ||
+        email == 'chrisibangar@gmail.com' ||
+        email == 'amasun2005@yahoo.com' ||
+        email == 'sundayamangi@gmail.com' ||
+        email == '20222731@nileuniversity.edu.ng' ||
+        email == '20220571@nileuniversity.edu.ng' ||
+        email == '211212115@nileuniversity.edu.ng' ||
+        email == '20220459@nileuniversity.edu.ng' ||
+        email == '20220985@nileuniversity.edu.ng' ||
+        email == '20220144@nileuniversity.edu.ng' ||
+        email == 'amangisundayjr@outlook.com' ||
+        email == 'aduray49@gmail.com';
+
+    if (!RegExp(r'^[a-zA-Z0-9]+([.][a-zA-Z0-9]+)*@nileuniversity\.edu\.ng$', caseSensitive: false).hasMatch(email) && !isTester) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid Nile University email address')),
       );

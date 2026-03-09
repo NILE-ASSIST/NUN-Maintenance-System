@@ -8,15 +8,14 @@ class AuthService {
 
   // Single Regex for all staff emails
   final RegExp nileStaffRegex = RegExp(
-    r'^[a-zA-Z0-9._]+@nileuniversity\.edu\.ng$',
+    r'^[a-zA-Z0-9]+([.][a-zA-Z0-9]+)*@nileuniversity\.edu\.ng$',
     caseSensitive: false,
   );
   final RegExp nileStudentRegex = RegExp(
-    r'^[0-9{9}]+@nileuniversity\.edu\.ng$',
+     r'^[0-9]{9}@nileuniversity\.edu\.ng$',
   );
 
   // Access codes
-  // only users with the codes can create these specific accounts.
   static const Map<String, String> masterCodes = {
     'admin': 'NUN-ADM-2026',
     'facility_manager': 'NUN-FAC-2026',
@@ -96,8 +95,8 @@ class AuthService {
         TestEmail == '20220571@nileuniversity.edu.ng' ||
         TestEmail == '211212115@nileuniversity.edu.ng' ||
         TestEmail == '20220459@nileuniversity.edu.ng' ||
-        TestEmail == '20220459@nileuniversity.edu.ng' ||
-        TestEmail == '20220459@nileuniversity.edu.ng' ||
+        TestEmail == '20220985@nileuniversity.edu.ng' ||
+        TestEmail == '20220144@nileuniversity.edu.ng' ||
         TestEmail == 'amangisundayjr@outlook.com' ||
         TestEmail == 'aduray49@gmail.com';
 
@@ -108,8 +107,8 @@ class AuthService {
             'Access Restricted: Only official @nileuniversity.edu.ng emails are allowed.',
       );
     }
-    //prevent all students from registering
-    if (nileStudentRegex.hasMatch(email)) {
+    //prevent all students from registering except tester
+    if (!isTester && nileStudentRegex.hasMatch(email)) {
       throw FirebaseAuthException(
         code: 'access-denied',
         message: 'Access Restricted: Student emails are not allowed.',
@@ -240,13 +239,12 @@ class AuthService {
     }
 
     UserCredential credential = await _auth.signInWithEmailAndPassword(
-      email:
-          loginEmail, // Now safely passes either the typed email or the resolved email
+      email:loginEmail, // Now safely passes either the typed email or the resolved email
       password: password,
     );
     User user = credential.user!;
 
-    // Search all collections since we don't know the role yet
+    // Search all collections since the role is unknown
     List<String> collections = [
       'lecturers',
       'admins',

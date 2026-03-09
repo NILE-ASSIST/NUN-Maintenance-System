@@ -19,7 +19,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(
-      const Duration(seconds: 3),
+      const Duration(seconds: 5),
       (_) => _checkEmailVerified(),
     );
   }
@@ -30,12 +30,28 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     super.dispose();
   }
 
+  // Future<void> _checkEmailVerified() async {
+  //   await FirebaseAuth.instance.currentUser?.reload();
+  //   if (FirebaseAuth.instance.currentUser?.emailVerified ?? false) {
+  //     _timer?.cancel();
+  //   }
+  // }
+
   Future<void> _checkEmailVerified() async {
-    await FirebaseAuth.instance.currentUser?.reload();
-    if (FirebaseAuth.instance.currentUser?.emailVerified ?? false) {
-      _timer?.cancel();
-    }
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) return;
+
+  await user.reload();
+
+  if (FirebaseAuth.instance.currentUser!.emailVerified) {
+    _timer?.cancel();
+
+    if (!mounted) return;
+
+    setState(() {});
   }
+}
 
   Future<void> _resendVerificationEmail() async {
     if (!_canResendEmail) return;
