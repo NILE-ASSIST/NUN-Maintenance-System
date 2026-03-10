@@ -23,7 +23,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
   late PageController _pageController; // Controller for the swipeable area
-
+  
   final Color nileBlue = const Color(0xFF1E3DD3);
 
   @override
@@ -78,52 +78,52 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _buildChatIcon() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Icon(Icons.chat_outlined);
+Widget _buildChatIcon() {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return const Icon(Icons.chat_outlined);
 
-    final ticketsRef = FirebaseFirestore.instance.collection('tickets');
+  final ticketsRef = FirebaseFirestore.instance.collection('tickets');
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: ticketsRef.snapshots(),
-      builder: (context, snapshot) {
-        bool hasUnread = false;
+  return StreamBuilder<QuerySnapshot>(
+    stream: ticketsRef.snapshots(),
+    builder: (context, snapshot) {
+      bool hasUnread = false;
 
-        if (snapshot.hasData) {
-          for (var doc in snapshot.data!.docs) {
-            final data = doc.data() as Map<String, dynamic>;
+      if (snapshot.hasData) {
+        for (var doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
 
-            if (data['unreadBy'] == user.uid ||
-                data['unreadBy_internal'] == user.uid) {
-              hasUnread = true;
-              break;
-            }
+          if (data['unreadBy'] == user.uid ||
+              data['unreadBy_internal'] == user.uid) {
+            hasUnread = true;
+            break;
           }
         }
+      }
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const Icon(Icons.chat_outlined),
-            if (hasUnread)
-              Positioned(
-                right: -2,
-                top: -2,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: MyApp.nileGreen,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 0.5),
-                  ),
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.chat_outlined),
+          if (hasUnread)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: MyApp.nileGreen,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 0.5),
                 ),
               ),
-          ],
-        );
-      },
-    );
-  }
+            ),
+        ],
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -137,19 +137,18 @@ class _MainLayoutState extends State<MainLayout> {
         children: [
           _getHomeForRole(),
           ComplaintScreen(),
-          if (!isFacilityManager && !isAdmin)
-            ChatScreen(userData: widget.userData),
+          if (!isFacilityManager && !isAdmin) ChatScreen(userData: widget.userData),
           ProfileScreen(userData: widget.userData),
         ],
       ),
-
+      
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
         currentIndex: _currentIndex,
         selectedItemColor: nileBlue,
         unselectedItemColor: Colors.grey,
-        onTap: _onBottomNavTapped,
+        onTap: _onBottomNavTapped, 
         items: [
           const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -160,7 +159,10 @@ class _MainLayoutState extends State<MainLayout> {
             label: "Complaints",
           ),
           if (!isFacilityManager && !isAdmin)
-            BottomNavigationBarItem(icon: _buildChatIcon(), label: "Chats"),
+            BottomNavigationBarItem(
+              icon: _buildChatIcon(),
+              label: "Chats",
+            ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: "Profile",
