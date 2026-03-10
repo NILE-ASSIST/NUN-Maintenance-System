@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/chat_detail.dart';
+import 'package:nileassist/widgets/reusable_searchbar.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -15,6 +16,9 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // ignore: unused_field
+  String _searchQuery = '';
 
   // stream to get the tickets based on the user's role
   Stream<QuerySnapshot> _getUserTicketsStream() {
@@ -118,26 +122,18 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 child: Column(
                   children: [
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // Search bar
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Container(
-                        height: 45,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const TextField(
-                          decoration: InputDecoration(
-                            hintText: "Search by id or category",
-                            hintStyle: TextStyle(color: Colors.grey),
-                            prefixIcon: Icon(Icons.search, color: Colors.grey),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
+                      child: ReusableSearchBar(
+                        hintText: "Search by id or category",
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -147,7 +143,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: StreamBuilder<QuerySnapshot>(
                         stream: _getUserTicketsStream(),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return const Center(
                               child: CircularProgressIndicator(),
                             );
@@ -161,16 +158,20 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             );
                           }
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
                             return _buildEmptyState();
                           }
 
-                          final assignedTickets = snapshot.data!.docs.where((doc) {
+                          final assignedTickets = snapshot.data!.docs.where((
+                            doc,
+                          ) {
                             final data = doc.data() as Map<String, dynamic>;
                             final status = data['status'] ?? 'Pending';
                             final hasStaff = data['assignedStaffId'] != null;
-                            final isActive = status != 'Resolved' && status != 'Completed';
-                            
+                            final isActive =
+                                status != 'Resolved' && status != 'Completed';
+
                             return hasStaff && isActive;
                           }).toList();
 
@@ -180,22 +181,28 @@ class _ChatScreenState extends State<ChatScreen> {
 
                           // Routes tickets into separate chat rooms
                           final List<Map<String, dynamic>> chatRooms = [];
-                          final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                          final currentUserId =
+                              FirebaseAuth.instance.currentUser?.uid;
 
                           for (var doc in assignedTickets) {
                             final data = doc.data() as Map<String, dynamic>;
                             final ticketId = doc.id;
-                            final location = data['location'] ?? 'Unknown Location';
-                            final shortId = ticketId.length > 6 
-                                ? ticketId.substring(0, 6).toUpperCase() 
+                            final location =
+                                data['location'] ?? 'Unknown Location';
+                            final shortId = ticketId.length > 6
+                                ? ticketId.substring(0, 6).toUpperCase()
                                 : ticketId.toUpperCase();
 
-                            if (role == 'maintenance' || role == 'maintenance_staff') {
+                            if (role == 'maintenance' ||
+                                role == 'maintenance_staff') {
                               // maintenance staff to lecturer chat (Public)
                               chatRooms.add({
                                 'ticketId': ticketId,
                                 'targetId': data['issuerID'] ?? '',
-                                'displayName': data['issuerName'] ?? data['issuerEmail'] ?? 'User',
+                                'displayName':
+                                    data['issuerName'] ??
+                                    data['issuerEmail'] ??
+                                    'User',
                                 'subtitle': "Ticket #$shortId • $location",
                                 'subcollection': 'messages',
                                 'isStaff': true,
@@ -207,28 +214,37 @@ class _ChatScreenState extends State<ChatScreen> {
                                 'ticketId': ticketId,
                                 'targetId': data['assignedTo'] ?? '',
                                 'displayName': "Supervisor",
-                                'subtitle': "Internal: Ticket #$shortId • $location",
-                                'subcollection': 'supervisor_messages', // Uses the private folder
+                                'subtitle':
+                                    "Internal: Ticket #$shortId • $location",
+                                'subcollection':
+                                    'supervisor_messages', // Uses the private folder
                                 'isStaff': true,
-                                'hasUnread': data['unreadBy_internal'] == currentUserId,
+                                'hasUnread':
+                                    data['unreadBy_internal'] == currentUserId,
                               });
                             } else if (role == 'maintenance_supervisor') {
                               // maintenance supervisor to staff chat (Internal)
                               chatRooms.add({
                                 'ticketId': ticketId,
                                 'targetId': data['assignedStaffId'] ?? '',
-                                'displayName': data['assignedStaffName'] ?? 'Assigned Staff',
-                                'subtitle': "Internal: Ticket #$shortId • $location",
+                                'displayName':
+                                    data['assignedStaffName'] ??
+                                    'Assigned Staff',
+                                'subtitle':
+                                    "Internal: Ticket #$shortId • $location",
                                 'subcollection': 'supervisor_messages',
                                 'isStaff': false,
-                                'hasUnread': data['unreadBy_internal'] == currentUserId,
+                                'hasUnread':
+                                    data['unreadBy_internal'] == currentUserId,
                               });
                             } else {
                               // lecturer to maintenance staff Chat (Public)
                               chatRooms.add({
                                 'ticketId': ticketId,
                                 'targetId': data['assignedStaffId'] ?? '',
-                                'displayName': data['assignedStaffName'] ?? 'Assigned Staff',
+                                'displayName':
+                                    data['assignedStaffName'] ??
+                                    'Assigned Staff',
                                 'subtitle': "Ticket #$shortId • $location",
                                 'subcollection': 'messages',
                                 'isStaff': false,
@@ -244,7 +260,10 @@ class _ChatScreenState extends State<ChatScreen> {
                               final chat = chatRooms[index];
 
                               return FutureBuilder<String?>(
-                                future: _fetchTargetProfilePicture(chat['targetId'], chat['isStaff']),
+                                future: _fetchTargetProfilePicture(
+                                  chat['targetId'],
+                                  chat['isStaff'],
+                                ),
                                 builder: (context, picSnapshot) {
                                   return _buildChatItem(
                                     name: chat['displayName'],
@@ -254,9 +273,16 @@ class _ChatScreenState extends State<ChatScreen> {
                                     onTap: () {
                                       // clears the correct unread dot
                                       if (chat['hasUnread']) {
-                                        _firestore.collection('tickets').doc(chat['ticketId']).update({
-                                          chat['subcollection'] == 'messages' ? 'unreadBy' : 'unreadBy_internal': null,
-                                        });
+                                        _firestore
+                                            .collection('tickets')
+                                            .doc(chat['ticketId'])
+                                            .update({
+                                              chat['subcollection'] ==
+                                                          'messages'
+                                                      ? 'unreadBy'
+                                                      : 'unreadBy_internal':
+                                                  null,
+                                            });
                                       }
 
                                       Navigator.push(
@@ -266,9 +292,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                             ticketId: chat['ticketId'],
                                             targetName: chat['displayName'],
                                             targetId: chat['targetId'],
-                                            targetProfilePicture: picSnapshot.data,
+                                            targetProfilePicture:
+                                                picSnapshot.data,
                                             currentUserData: widget.userData,
-                                            chatCollection: chat['subcollection'], // passes the folder name
+                                            chatCollection:
+                                                chat['subcollection'], // passes the folder name
                                           ),
                                         ),
                                       );
@@ -278,7 +306,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               );
                             },
                           );
-                        }, 
+                        },
                       ),
                     ),
                   ],
@@ -344,7 +372,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     CircleAvatar(
                       radius: 20,
                       backgroundColor: Colors.grey.shade500,
-                      backgroundImage: profilePicture != null && profilePicture.isNotEmpty
+                      backgroundImage:
+                          profilePicture != null && profilePicture.isNotEmpty
                           ? NetworkImage(profilePicture)
                           : null,
                       child: profilePicture == null || profilePicture.isEmpty
@@ -365,10 +394,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           decoration: BoxDecoration(
                             color: MyApp.nileGreen,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 0.5,
-                            ),
+                            border: Border.all(color: Colors.white, width: 0.5),
                           ),
                         ),
                       ),
@@ -391,9 +417,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       Text(
                         message,
                         style: TextStyle(
-                          color: hasUnread ? Colors.black87 : Colors.grey.shade600,
+                          color: hasUnread
+                              ? Colors.black87
+                              : Colors.grey.shade600,
                           fontSize: 13,
-                          fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: hasUnread
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

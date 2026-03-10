@@ -22,10 +22,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _checkEmailVerification();
   }
 
-  //SYNC FUNCTION
+  //sync function
   Future<void> _checkEmailVerification() async {
-    //STOP CONDITION:
-    // If the data passed to this screen ALREADY says verified, stop immediately.
+    //Stop condition:
+    // If the data passed to this screen says verified, stop.
     //
     if (widget.userData['emailVerified'] == true) {
       return; 
@@ -34,7 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     User? user = FirebaseAuth.instance.currentUser;
     
     if (user != null) {
-      // 2. Only reload if the local Auth object thinks it's unverified
+      // only reloads if the local Auth object says unverified
       if (!user.emailVerified) {
          try {
            await user.reload(); 
@@ -50,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final role = widget.userData['role'] ?? 'lecturer';
         final collection = _getCollectionFromRole(role);
         
-        //Update the Database ONLY once
+        //Update the Database once
         await FirebaseFirestore.instance
             .collection(collection)
             .doc(user.uid)
@@ -58,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             
         print("✅ Sync Complete: Firestore updated to Verified.");
         
-        // Optional: Force a UI rebuild to show the new status immediately without a full reload
+        // force a UI rebuild to show the new status immediately without a full reload
         if (mounted) {
           setState(() {
             // Update local widget data so we don't try to sync again
@@ -114,6 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: Container(
                   width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(

@@ -3,8 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:nileassist/main.dart';
-
-// --- CUSTOM IMPORTS ---
 import 'package:nileassist/services/complaint_services.dart';
 import 'package:nileassist/widgets/priority_widget.dart'; 
 import 'package:nileassist/widgets/complaint_info_widget.dart';
@@ -12,7 +10,7 @@ import 'package:nileassist/widgets/complaint_info_widget.dart';
 class ComplaintDetailScreen extends StatelessWidget {
   final String ticketId;
   final Map<String, dynamic> data;
-  final TicketService _ticketService = TicketService(); // Initialize our new brain!
+  final TicketService _ticketService = TicketService();
 
   ComplaintDetailScreen({
     super.key,
@@ -41,7 +39,6 @@ class ComplaintDetailScreen extends StatelessWidget {
     return doc.exists;
   }
 
-  // --- DIALOG BUILDERS ---
   void _showSupervisorDialog(BuildContext context, String category) {
     showDialog(
       context: context,
@@ -104,7 +101,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- BUILD METHOD ---
+
   @override
   Widget build(BuildContext context) {
     final Timestamp? timestamp = data['dateCreated'] as Timestamp?;
@@ -155,7 +152,7 @@ class ComplaintDetailScreen extends StatelessWidget {
             Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
             const SizedBox(height: 16),
             
-            // PRIORITY
+            //Priority 
             FutureBuilder<bool>(
               future: _isFacilityManager(),
               builder: (context, snapshot) {
@@ -170,7 +167,7 @@ class ComplaintDetailScreen extends StatelessWidget {
             const Divider(height: 1),
             const SizedBox(height: 24),
             
-            // DETAILS & PEOPLE
+            // Details 
             Row(
               children: [
                 InfoTile(icon: Icons.location_on_outlined, label: "Location", value: data['location'] ?? 'Unknown'),
@@ -181,7 +178,7 @@ class ComplaintDetailScreen extends StatelessWidget {
             const SizedBox(height: 20),
             PersonCard(title: "Issuer Info", name: data['issuerName'] ?? 'No name', role: data['issuerRole'] ?? 'Unknown role', icon: Icons.person_outline, isEmail: true),
             
-            // ASSIGNED PERSONNEL
+            //Assigned Personnel
             if (data['assignedTo'] != null)
               AsyncPersonCard(title: "Assigned Supervisor", userId: data['assignedTo'], collection: 'maintenance_supervisors'),
             if (data['assignedStaffId'] != null)
@@ -189,13 +186,13 @@ class ComplaintDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // TIMELINE & ATTACHMENT
+            // Timeline and Attachment
             StatusTimeline(status: status, data: data),
             const SizedBox(height: 30),
             const Text("Attachment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             
-            // IMAGE
+            // Image
             if (data['imageUrl'] != null && data['imageUrl'].toString().isNotEmpty)
                ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(data['imageUrl'], height: 200, width: double.infinity, fit: BoxFit.cover))
             else if (data['attachmentName'] != null)
@@ -205,8 +202,7 @@ class ComplaintDetailScreen extends StatelessWidget {
                
             const SizedBox(height: 40),
 
-            // --- ACTION BUTTONS ---
-            // ISSUER
+            // Action button for Issuer
             if (isIssuer && status == 'Being Validated')
               Row(
                 children: [
@@ -216,7 +212,7 @@ class ComplaintDetailScreen extends StatelessWidget {
                 ],
               ),
 
-            // STAFF
+            // Maintenance Staff
             FutureBuilder<bool>(
               future: _isMaintenanceStaff(),
               builder: (context, snapshot) {
@@ -227,7 +223,7 @@ class ComplaintDetailScreen extends StatelessWidget {
               },
             ),
 
-            // FACILITY MANAGER
+            // Facility Manager
             FutureBuilder<bool>(
               future: _isFacilityManager(),
               builder: (context, snapshot) {
@@ -244,7 +240,7 @@ class ComplaintDetailScreen extends StatelessWidget {
               },
             ),
 
-            // SUPERVISOR
+            // Maintenance Supervisor
             FutureBuilder<bool>(
               future: _isSupervisor(),
               builder: (context, snapshot) {

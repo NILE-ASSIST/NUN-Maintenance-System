@@ -29,7 +29,6 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void initState() {
     super.initState();
-    // Initialize the controller
     _pageController = PageController(initialPage: _currentIndex);
   }
 
@@ -41,7 +40,12 @@ class _MainLayoutState extends State<MainLayout> {
         return const AdminDashboard();
       case 'lecturer':
       case 'hostel_supervisor':
-        return DashboardScreen(userData: widget.userData);
+        return DashboardScreen(
+          userData: widget.userData,
+          onNavigateToComplaints: () {
+            _onBottomNavTapped(1); // navigate to the complaints tab
+          },
+        );
       case 'facility_manager':
         return const FMDashboard();
       case 'maintenance':

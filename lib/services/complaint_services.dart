@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nileassist/main.dart';
 
 class TicketService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // --- NOTIFICATION HELPER ---
+  // Notification function
   Future<void> sendNotification({
     required String ticketId,
     required String title,
@@ -25,12 +26,90 @@ class TicketService {
     });
   }
 
-  // --- STAFF ACTIONS ---
+  // maintenance staff action
   Future<void> markAsDoneByStaff(BuildContext context, String ticketId, Map<String, dynamic> data) async {
+    TextEditingController remarkController = TextEditingController();
+    
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        String? errorMessage;
+
+        return StatefulBuilder( //allows the dialog to rebuild to show the error
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Mark as Completed'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Leave a remark about the fix (Required):'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: remarkController,
+                    maxLines: 3,
+                    onChanged: (value) {
+                      
+                      if (errorMessage != null && value.trim().isNotEmpty) {
+                        setState(() => errorMessage = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'E.g., Replaced the faulty AC capacitor.',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      errorText: errorMessage, // displays the error message if there is one
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MyApp.nileGreen, 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    // Check if textfield is empty before continuing
+                    if (remarkController.text.trim().isEmpty) {
+                      setState(() {
+                        errorMessage = 'Please provide a remark before submitting.';
+                      });
+                    } else {
+                      Navigator.pop(context, true); // Confirm only if valid
+                    }
+                  },
+                  child: const Text('Submit', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+
+    // If the staff clicks outside the dialog or presses cancel, stop the function.
+    if (confirm != true) return;
+
+    String staffRemark = remarkController.text.trim();
+
     try {
       await _db.collection('tickets').doc(ticketId).update({
         'status': 'Being Validated',
         'dateCompletedByStaff': FieldValue.serverTimestamp(),
+        'staffRemark': staffRemark, 
       });
 
       if (data['issuerID'] != null) {
@@ -49,12 +128,67 @@ class TicketService {
     }
   }
 
-  // --- ISSUER ACTIONS ---
-  Future<void> verifyCompletion(BuildContext context, String ticketId, Map<String, dynamic> data) async {
+  // Issuer Action
+ Future<void> verifyCompletion(BuildContext context, String ticketId, Map<String, dynamic> data) async {
+    TextEditingController remarkController = TextEditingController();
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Review Maintenance Work'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Leave a remark for the maintenance staff (Optional):'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: remarkController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'E.g., Great job, everything works perfectly now!',
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MyApp.nileGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Verify & Close', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If the user clicks outside the dialog box or presses cancel, stop the function.
+    if (confirm != true) return; 
+
+    String userRemark = remarkController.text.trim();
+
     try {
       await _db.collection('tickets').doc(ticketId).update({
         'status': 'Resolved',
         'dateResolved': FieldValue.serverTimestamp(),
+        'issuerRemark': userRemark,
       });
 
       if (data['assignedStaffId'] != null) {
@@ -90,7 +224,7 @@ class TicketService {
     }
   }
 
-  // --- FACILITY MANAGER ACTIONS ---
+  // Facility Manager action
   Future<void> rejectTicket(BuildContext context, String ticketId, Map<String, dynamic> data) async {
     final String issuerId = data['issuerID'];
     final String description = data['description'] ?? 'Complaint';
@@ -147,7 +281,7 @@ class TicketService {
     }
   }
 
-  // --- SUPERVISOR ACTIONS ---
+  // Maintenance Supervisor action
   Future<void> assignToStaff(BuildContext context, String ticketId, Map<String, dynamic> data, String staffId, String staffName) async {
     try {
       await _db.collection('tickets').doc(ticketId).update({
