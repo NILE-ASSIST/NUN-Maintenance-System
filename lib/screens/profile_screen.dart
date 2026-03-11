@@ -230,7 +230,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               if (snapshot.hasData) {
                 final docs = snapshot.data!.docs;
-                totalCount = docs.length.toString();
+                
+                totalCount = docs.where((doc) {
+                  final status = (doc.data() as Map)['status']?.toString().toLowerCase() ?? '';
+                  return status == 'assigned' || 
+                         status == 'pending' || 
+                         status == 'in progress' || 
+                         status == 'being validated' || 
+                         status == 'needs recheck';
+                }).length.toString();
                 
                 resolvedCount = docs
                     .where((doc) {
