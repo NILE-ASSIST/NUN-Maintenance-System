@@ -186,7 +186,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 40),
               Center(
                 child: Image.asset(
-                  'assets/images/logo-removebg-preview.png',
+                  'assets/images/WhatsApp_Image_2026-03-11_at_16.29.42-removebg-preview.png',
                   height: 150,
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.school, size: 90, color: MyApp.nileBlue),
