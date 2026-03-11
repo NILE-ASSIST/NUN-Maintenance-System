@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/complaintDetail.dart';
+import 'package:nileassist/screens/history_screen.dart' as nileassist_history;
 
 class FMDashboard extends StatelessWidget {
   const FMDashboard({super.key});
@@ -17,6 +18,17 @@ class FMDashboard extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const nileassist_history.HistoryScreen()),
+              );
+            },
+          ),
+        ],
       ),
       // backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       body: StreamBuilder<QuerySnapshot>(

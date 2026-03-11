@@ -44,6 +44,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_messaging: ^16.1.1
   flutter_local_notifications: ^20.0.0
+  google_fonts: ^8.0.2
 
 dev_dependencies:
   flutter_test:

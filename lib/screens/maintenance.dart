@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/complaintDetail.dart';
-import 'package:nileassist/screens/mainLayout.dart';
+import 'package:nileassist/screens/history_screen.dart' as nileassist_history;
 
 class MaintenanceDashboard extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -64,7 +64,15 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
                   ),
                   Row(
                     children: [
-                      _headerIconButton(Icons.history),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const nileassist_history.HistoryScreen()),
+                          );
+                        },
+                        child: _headerIconButton(Icons.history),
+                      ),
                       const SizedBox(width: 12),
                       _headerIconButton(Icons.notifications),
                     ],

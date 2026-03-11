@@ -121,134 +121,181 @@ class ComplaintDetailScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Complaint Details"),
-        centerTitle: true,
-        backgroundColor: MyApp.nileBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: () => Navigator.pop(context)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      backgroundColor: MyApp.nileBlue,
+      body: SafeArea(
+        bottom: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('ID: #${ticketId.length > 6 ? ticketId.substring(0, 6).toUpperCase() : ticketId}', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: statusBgColor, borderRadius: BorderRadius.circular(20)),
-                  child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(data['description'] ?? 'No description.', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F312B), height: 1.3)),
-            const SizedBox(height: 12),
-            Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
-            const SizedBox(height: 16),
-            
-            //Priority 
-            FutureBuilder<bool>(
-              future: _isFacilityManager(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == true) {
-                  return FacilityManagerPriorityEditor(ticketId: ticketId, initialPriority: data['priority'] ?? 'Medium');
-                }
-                return PriorityBadge(priorityLevel: data['priority']);
-              },
-            ),
-            
-            const SizedBox(height: 24),
-            const Divider(height: 1),
-            const SizedBox(height: 24),
-            
-            // Details 
-            Row(
-              children: [
-                InfoTile(icon: Icons.location_on_outlined, label: "Location", value: data['location'] ?? 'Unknown'),
-                const SizedBox(width: 20),
-                InfoTile(icon: Icons.category_outlined, label: "Category", value: category),
-              ],
-            ),
-            const SizedBox(height: 20),
-            PersonCard(title: "Issuer Info", name: data['issuerName'] ?? 'No name', role: data['issuerRole'] ?? 'Unknown role', icon: Icons.person_outline, isEmail: true),
-            
-            //Assigned Personnel
-            if (data['assignedTo'] != null)
-              AsyncPersonCard(title: "Assigned Supervisor", userId: data['assignedTo'], collection: 'maintenance_supervisors'),
-            if (data['assignedStaffId'] != null)
-              AsyncPersonCard(title: "Assigned Staff", userId: data['assignedStaffId'], collection: 'maintenance'),
-
-            const SizedBox(height: 30),
-
-            // Timeline and Attachment
-            StatusTimeline(status: status, data: data),
-            const SizedBox(height: 30),
-            const Text("Attachment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            
-            // Image
-            if (data['imageUrl'] != null && data['imageUrl'].toString().isNotEmpty)
-               ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(data['imageUrl'], height: 200, width: double.infinity, fit: BoxFit.cover))
-            else if (data['attachmentName'] != null)
-               Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)), child: Column(children: [const Icon(Icons.description_outlined, size: 40, color: Colors.grey), const SizedBox(height: 10), Text("File: ${data['attachmentName']}", style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), const Text("Attachment available", style: TextStyle(color: Colors.grey, fontSize: 12))]))
-            else
-               Container(width: double.infinity, height: 100, decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)), child: const Center(child: Text("No attachment provided", style: TextStyle(color: Colors.grey)))),
-               
-            const SizedBox(height: 40),
-
-            // Action button for Issuer
-            if (isIssuer && status == 'Being Validated')
-              Row(
+            // Custom Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              child: Row(
                 children: [
-                  Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectCompletion(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.orange), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject Completion", style: TextStyle(color: Colors.deepOrange)))),
-                  const SizedBox(width: 16),
-                  Expanded(child: ElevatedButton(onPressed: () => _ticketService.verifyCompletion(context, ticketId, data), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF27AE60), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Verify & Close", style: TextStyle(color: Colors.white)))),
+                   GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  const Text(
+                    'Complaint Details',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
-
-            // Maintenance Staff
-            FutureBuilder<bool>(
-              future: _isMaintenanceStaff(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == true && data['assignedStaffId'] == currentUid && (status == 'In Progress' || status == 'Needs Recheck')) {
-                  return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _ticketService.markAsDoneByStaff(context, ticketId, data), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Mark as Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
-                }
-                return const SizedBox.shrink();
-              },
             ),
+            
+            const SizedBox(height: 20),
 
-            // Facility Manager
-            FutureBuilder<bool>(
-              future: _isFacilityManager(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == true && status.toLowerCase() == 'pending') {
-                  return Row(
-                    children: [
-                      Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectTicket(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
-                      const SizedBox(width: 16),
-                      Expanded(child: ElevatedButton(onPressed: () => _showSupervisorDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Accept & Assign", style: TextStyle(color: Colors.white)))),
-                    ],
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
+             // Main Content Area (Rounded Container)
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(50),
+                    topRight: Radius.circular(50),
+                  ),
+                ),
+                child: ClipRRect(
+                   borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(50),
+                    topRight: Radius.circular(50),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('ID: #${ticketId.length > 6 ? ticketId.substring(0, 6).toUpperCase() : ticketId}', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(color: statusBgColor, borderRadius: BorderRadius.circular(20)),
+                              child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Text(data['description'] ?? 'No description.', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F312B), height: 1.3)),
+                        const SizedBox(height: 12),
+                        Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                        const SizedBox(height: 16),
+                        
+                        //Priority 
+                        FutureBuilder<bool>(
+                          future: _isFacilityManager(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data == true) {
+                              return FacilityManagerPriorityEditor(ticketId: ticketId, initialPriority: data['priority'] ?? 'Medium');
+                            }
+                            return PriorityBadge(priorityLevel: data['priority']);
+                          },
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        const Divider(height: 1),
+                        const SizedBox(height: 24),
+                        
+                        // Details 
+                        Row(
+                          children: [
+                            InfoTile(icon: Icons.location_on_outlined, label: "Location", value: data['location'] ?? 'Unknown'),
+                            const SizedBox(width: 20),
+                            InfoTile(icon: Icons.category_outlined, label: "Category", value: category),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        PersonCard(title: "Issuer Info", name: data['issuerName'] ?? 'No name', role: data['issuerRole'] ?? 'Unknown role', icon: Icons.person_outline, isEmail: true),
+                        
+                        //Assigned Personnel
+                        if (data['assignedTo'] != null)
+                          AsyncPersonCard(title: "Assigned Supervisor", userId: data['assignedTo'], collection: 'maintenance_supervisors'),
+                        if (data['assignedStaffId'] != null)
+                          AsyncPersonCard(title: "Assigned Staff", userId: data['assignedStaffId'], collection: 'maintenance'),
 
-            // Maintenance Supervisor
-            FutureBuilder<bool>(
-              future: _isSupervisor(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == true && data['assignedTo'] == currentUid && ['pending', 'in progress', 'needs recheck'].contains(status.toLowerCase())) {
-                  return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _showStaffDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(data['assignedStaffId'] != null ? "Re-Assign Staff" : "Assign Staff", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
-                }
-                return const SizedBox.shrink();
-              },
+                        const SizedBox(height: 30),
+
+                        // Timeline and Attachment
+                        StatusTimeline(status: status, data: data),
+                        const SizedBox(height: 30),
+                        const Text("Attachment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        
+                        // Image
+                        if (data['imageUrl'] != null && data['imageUrl'].toString().isNotEmpty)
+                           ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(data['imageUrl'], height: 200, width: double.infinity, fit: BoxFit.cover))
+                        else if (data['attachmentName'] != null)
+                           Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)), child: Column(children: [const Icon(Icons.description_outlined, size: 40, color: Colors.grey), const SizedBox(height: 10), Text("File: ${data['attachmentName']}", style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), const Text("Attachment available", style: TextStyle(color: Colors.grey, fontSize: 12))]))
+                        else
+                           Container(width: double.infinity, height: 100, decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)), child: const Center(child: Text("No attachment provided", style: TextStyle(color: Colors.grey)))),
+                           
+                        const SizedBox(height: 40),
+
+                        // Action button for Issuer
+                        if (isIssuer && status == 'Being Validated')
+                          Row(
+                            children: [
+                              Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectCompletion(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.orange), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject Completion", style: TextStyle(color: Colors.deepOrange)))),
+                              const SizedBox(width: 16),
+                              Expanded(child: ElevatedButton(onPressed: () => _ticketService.verifyCompletion(context, ticketId, data), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF27AE60), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Verify & Close", style: TextStyle(color: Colors.white)))),
+                            ],
+                          ),
+
+                        // Maintenance Staff
+                        FutureBuilder<bool>(
+                          future: _isMaintenanceStaff(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data == true && data['assignedStaffId'] == currentUid && (status == 'In Progress' || status == 'Needs Recheck')) {
+                              return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _ticketService.markAsDoneByStaff(context, ticketId, data), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Mark as Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+
+                        // Facility Manager
+                        FutureBuilder<bool>(
+                          future: _isFacilityManager(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data == true && status.toLowerCase() == 'pending') {
+                              return Row(
+                                children: [
+                                  Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectTicket(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: ElevatedButton(onPressed: () => _showSupervisorDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Accept & Assign", style: TextStyle(color: Colors.white)))),
+                                ],
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+
+                        // Maintenance Supervisor
+                        FutureBuilder<bool>(
+                          future: _isSupervisor(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data == true && data['assignedTo'] == currentUid && ['pending', 'in progress', 'needs recheck'].contains(status.toLowerCase())) {
+                              return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _showStaffDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(data['assignedStaffId'] != null ? "Re-Assign Staff" : "Assign Staff", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

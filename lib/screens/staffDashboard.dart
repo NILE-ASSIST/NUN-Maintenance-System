@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nileassist/screens/complaintDetail.dart';
 import 'package:intl/intl.dart';
+import 'package:nileassist/screens/history_screen.dart' as nileassist_history;
+import 'package:nileassist/screens/drafts_screen.dart' as nileassist_history;
 
 class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -55,13 +57,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.notifications, color: Colors.white),
+                  Row(
+                    children: [
+                       GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const nileassist_history.HistoryScreen()),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.history, color: Colors.white),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.notifications, color: Colors.white),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -391,34 +414,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _draftsCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: const [
-            Icon(Icons.description, color: Colors.grey),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('drafts')
+          .where('issuerID', isEqualTo: user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final int draftCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+        final String draftText = draftCount == 1 ? "1 unsaved draft" : "$draftCount unsaved drafts";
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const nileassist_history.DraftsScreen(), // We'll add this export or import properly
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
                 children: [
-                  Text("Drafts", style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(
-                    "0 unsaved drafts",
-                    style: TextStyle(color: Colors.grey),
+                  const Icon(Icons.description, color: Colors.grey),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Drafts", style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          draftText,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
                   ),
+                  const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

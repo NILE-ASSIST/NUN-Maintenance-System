@@ -9,7 +9,14 @@ import 'package:nileassist/main.dart';
 import 'package:nileassist/widgets/custom_dropdown.dart';
 
 class ComplaintFormPage extends StatefulWidget {
-  const ComplaintFormPage({super.key});
+  final String? draftId;
+  final Map<String, dynamic>? draftData;
+
+  const ComplaintFormPage({
+    super.key,
+    this.draftId,
+    this.draftData,
+  });
 
   @override
   State<ComplaintFormPage> createState() => _ComplaintFormPageState();
@@ -25,6 +32,7 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
   String _priority = 'Medium'; 
   String? _attachmentName;
   String? _attachmentPath; 
+  String? _attachmentUrl;
   bool _isSubmitting = false;
 
   @override
@@ -149,10 +157,67 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
         );
       }
       
+      // Auto-delete the draft if the ticket came from a saved draft
+      if (widget.draftId != null) {
+        try {
+          await FirebaseFirestore.instance.collection('drafts').doc(widget.draftId).delete();
+        } catch (e) {
+          print("Failed to delete draft after submission: $e");
+        }
+      }
+      
       Navigator.pop(context);
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  // --- SAVE AS DRAFT LOGIC ---
+  Future<void> _saveAsDraft() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in first')));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final locationString = '${_buildingController.text.trim()}, Room ${_roomController.text.trim()}';
+
+      // We explicitly don't upload attachments immediately on "Save As Draft" to save quota, 
+      // but we maintain their references if they exist.
+      
+      final draftData = {
+        'description': _detailsController.text.trim(),
+        'category': _category == 'Select a category' ? '' : _category,
+        'priority': _priority,
+        'location': locationString == ', Room ' ? '' : locationString,
+        'issuerID': user.uid,
+        'attachmentName': _attachmentName,
+        'imageUrl': _attachmentUrl, 
+        'lastEdited': FieldValue.serverTimestamp(),
+      };
+
+      if (widget.draftId != null) {
+        // Update existing draft
+        await FirebaseFirestore.instance.collection('drafts').doc(widget.draftId).update(draftData);
+      } else {
+        // Create new draft
+        await FirebaseFirestore.instance.collection('drafts').add(draftData);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Draft saved successfully!'), backgroundColor: Colors.orange),
+      );
+      Navigator.pop(context);
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving draft: $e'), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -330,7 +395,16 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                OutlinedButton(onPressed: () {}, style: OutlinedButton.styleFrom(foregroundColor: Colors.black87, side: const BorderSide(color: Color(0xFFCDCDCD)), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Save as Draft')),
+                OutlinedButton(
+                  onPressed: _isSubmitting ? null : _saveAsDraft, 
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.black87, 
+                    side: const BorderSide(color: Color(0xFFCDCDCD)), 
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12), 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                  ), 
+                  child: const Text('Save as Draft'),
+                ),
                 const SizedBox(width: 12),
                 ElevatedButton(
                   style: ButtonStyle(

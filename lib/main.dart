@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:nileassist/auth/auth_service.dart';
 import 'package:nileassist/screens/gstarted.dart';
 import 'package:nileassist/screens/mainLayout.dart';
@@ -81,23 +82,8 @@ void _handleNotificationClick(RemoteMessage message) {
           strokeWidth: 2.0,
           color: nileBlue,
         ),
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
+        textTheme: GoogleFonts.robotoTextTheme(Theme.of(context).textTheme),
         colorScheme: ColorScheme.fromSeed(seedColor: nileBlue),
-        // colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.userChanges(),
