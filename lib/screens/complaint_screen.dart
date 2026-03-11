@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:nileassist/widgets/reusable_searchbar.dart';
 
 class ComplaintScreen extends StatefulWidget {
-  const ComplaintScreen({super.key});
+  final Map<String, dynamic> userData; 
+
+  const ComplaintScreen({super.key, required this.userData});
 
   @override
   State<ComplaintScreen> createState() => _ComplaintScreenState();
@@ -25,14 +27,38 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
     _complaintsStream = _getAllComplaintsStream();
   }
 
+  //Dynamic Stream based on Role
   Stream<QuerySnapshot> _getAllComplaintsStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const Stream.empty();
 
-    return _firestore
-        .collection('tickets')
-        .where('issuerID', isEqualTo: user.uid)
-        .snapshots();
+    final String role = (widget.userData['role'] ?? '').toString().toLowerCase();
+
+    // Facility Managers and Admins see everything
+    if (role == 'facility_manager' || role == 'admin') {
+      return _firestore.collection('tickets').snapshots();
+    } 
+    // Maintenance Staff see tickets assigned to them
+    else if (role == 'maintenance' || role == 'maintenance_staff') {
+      return _firestore
+          .collection('tickets')
+          .where('assignedStaffId', isEqualTo: user.uid)
+          .snapshots();
+    } 
+    // Supervisors see tickets assigned to their department
+    else if (role == 'maintenance_supervisor' || role == 'supervisor') {
+       return _firestore
+          .collection('tickets')
+          .where('assignedTo', isEqualTo: user.uid)
+          .snapshots();
+    }
+    //Lecturers/Hostel supervisors see only what they submitted
+    else {
+      return _firestore
+          .collection('tickets')
+          .where('issuerID', isEqualTo: user.uid)
+          .snapshots();
+    }
   }
 
   @override
@@ -75,6 +101,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
             Expanded(
               child: Container(
                 width: double.infinity,
+                clipBehavior: Clip.antiAlias,
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
