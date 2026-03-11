@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/complaintDetail.dart';
+import 'package:nileassist/screens/history_screen.dart' as nileassist_history;
 
 class MaintenanceDashboard extends StatefulWidget {
   const MaintenanceDashboard({super.key});
@@ -26,6 +27,17 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
         centerTitle: true,
         automaticallyImplyLeading: false,
         title: const Text('Maintenance Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+               Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const nileassist_history.HistoryScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(

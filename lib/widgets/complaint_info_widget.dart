@@ -20,36 +20,48 @@ class StatusTimeline extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             "Status Timeline",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1F2937),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 30),
           _buildTimelineStep(
             title: "Submitted",
-            icon: Icons.description_rounded,
+            subtitle: "Ticket has been received.",
+            icon: Icons.assignment_turned_in,
             isActive: isSubmitted,
             isLast: false,
           ),
           _buildTimelineStep(
             title: "In Progress",
-            subtitle: isInProgress && assignedName != null ? "Assigned to: $assignedName" : null,
-            icon: Icons.autorenew_rounded,
+            subtitle: isInProgress && assignedName != null ? "Assigned to: $assignedName" : "Awaiting assignment.",
+            icon: Icons.engineering,
             isActive: isInProgress,
             isLast: false,
           ),
           _buildTimelineStep(
             title: "Resolved",
-            icon: Icons.check_circle_rounded,
+            subtitle: isResolved ? "The issue has been fixed." : "Pending completion.",
+            icon: Icons.task_alt,
             isActive: isResolved,
             isLast: true,
           ),
@@ -65,54 +77,75 @@ class StatusTimeline extends StatelessWidget {
     required bool isActive,
     required bool isLast,
   }) {
-    final boxColor = isActive ? const Color(0xFFDCECC9) : Colors.grey.shade300;
-    final iconColor = isActive ? const Color(0xFF7CB342) : Colors.grey.shade500;
-    final lineColor = isActive ? const Color(0xFF7CB342) : Colors.grey.shade300;
+    // Flat, solid colors instead of heavy gradients/shadows
+    final activeColor = const Color(0xFF10B981);
+    final inactiveColor = Colors.grey.shade200;
+    
+    final iconColor = isActive ? Colors.white : Colors.grey.shade400;
+    final lineColor = isActive ? activeColor : Colors.grey.shade200;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: boxColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            if (!isLast)
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline Indicator Column
+          Column(
+            children: [
               Container(
-                width: 2,
+                width: 40,
                 height: 40,
-                color: lineColor,
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isActive ? activeColor : inactiveColor,
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                child: Center(
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: lineColor,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
                   ),
-                ]
-              ],
+                ),
+            ],
+          ),
+          const SizedBox(width: 20),
+          
+          // Content Column
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8.0, bottom: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? Colors.black87 : Colors.grey.shade500,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13, 
+                        color: isActive ? Colors.grey.shade700 : Colors.grey.shade400,
+                        height: 1.4,
+                      ),
+                    ),
+                  ]
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
