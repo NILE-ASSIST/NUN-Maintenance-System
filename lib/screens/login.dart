@@ -185,11 +185,14 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 40),
               Center(
-                child: Image.asset(
+                child: ClipRRect(
+                  borderRadius: BorderRadiusGeometry.circular(20),
+                  child: Image.asset(
                   'assets/images/WhatsApp_Image_2026-03-11_at_16.29.42-removebg-preview.png',
-                  height: 150,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.school, size: 90, color: MyApp.nileBlue),
+                  height: 110,
+                  width: 110,
+                  fit: BoxFit.cover,
+                ),
                 ),
               ),
               const SizedBox(height: 40),
