@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import 'package:nileassist/auth/auth_service.dart';
 import 'package:nileassist/screens/gstarted.dart';
 import 'package:nileassist/screens/mainLayout.dart';
@@ -77,12 +77,12 @@ void _handleNotificationClick(RemoteMessage message) {
       // navigatorKey: navigatorKey,
       navigatorKey: globalNavigatorKey,
       theme: ThemeData(
+        fontFamily: 'Roboto',
         scaffoldBackgroundColor: Colors.white,
         progressIndicatorTheme: const ProgressIndicatorThemeData(
           strokeWidth: 2.0,
           color: nileBlue,
         ),
-        textTheme: GoogleFonts.robotoTextTheme(Theme.of(context).textTheme),
         colorScheme: ColorScheme.fromSeed(seedColor: nileBlue),
       ),
       home: StreamBuilder<User?>(

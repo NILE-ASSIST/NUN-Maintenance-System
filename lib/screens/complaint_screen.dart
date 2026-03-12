@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:nileassist/widgets/reusable_searchbar.dart';
 
 class ComplaintScreen extends StatefulWidget {
-  final Map<String, dynamic> userData; 
+  final Map<String, dynamic> userData;
 
   const ComplaintScreen({super.key, required this.userData});
 
@@ -17,7 +17,7 @@ class ComplaintScreen extends StatefulWidget {
 
 class _ComplaintScreenState extends State<ComplaintScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   String _searchQuery = '';
   late Stream<QuerySnapshot> _complaintsStream;
 
@@ -32,22 +32,24 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const Stream.empty();
 
-    final String role = (widget.userData['role'] ?? '').toString().toLowerCase();
+    final String role = (widget.userData['role'] ?? '')
+        .toString()
+        .toLowerCase();
 
     // Facility Managers and Admins see everything
     if (role == 'facility_manager' || role == 'admin') {
       return _firestore.collection('tickets').snapshots();
-    } 
+    }
     // Maintenance Staff see tickets assigned to them
     else if (role == 'maintenance' || role == 'maintenance_staff') {
       return _firestore
           .collection('tickets')
           .where('assignedStaffId', isEqualTo: user.uid)
           .snapshots();
-    } 
+    }
     // Supervisors see tickets assigned to their department
     else if (role == 'maintenance_supervisor' || role == 'supervisor') {
-       return _firestore
+      return _firestore
           .collection('tickets')
           .where('assignedTo', isEqualTo: user.uid)
           .snapshots();
@@ -109,11 +111,11 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     topRight: Radius.circular(40),
                   ),
                 ),
-                
+
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    
+
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: ReusableSearchBar(
@@ -125,7 +127,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                         },
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
 
                     Expanded(
@@ -133,32 +135,57 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                         stream: _complaintsStream,
                         builder: (context, snapshot) {
                           if (snapshot.hasError) {
-                            return Center(child: Text('Something went wrong: ${snapshot.error}'));
+                            return Center(
+                              child: Text(
+                                'Something went wrong: ${snapshot.error}',
+                              ),
+                            );
                           }
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           }
 
                           final allDocs = snapshot.data?.docs ?? [];
-                          
+
                           // Filtering logic
                           final query = _searchQuery.toLowerCase().trim();
-                          
+
                           final filteredDocs = allDocs.where((doc) {
-                            if (query.isEmpty) return true;
-                            
                             final data = doc.data() as Map<String, dynamic>;
+                            final String status = (data['status'] ?? '')
+                                .toString()
+                                .toLowerCase();
+
+                            // 🔴 NEW: If the ticket is resolved, hide it from everyone
+                            if (status == 'resolved') return false;
+
+                            // Existing search logic
+                            if (query.isEmpty) return true;
+
                             final String fullId = doc.id.toLowerCase();
-                            final String shortId = fullId.length > 6 ? fullId.substring(0, 6) : fullId;
-                            final String category = (data['category'] ?? '').toString().toLowerCase();
+                            final String shortId = fullId.length > 6
+                                ? fullId.substring(0, 6)
+                                : fullId;
+                            final String category = (data['category'] ?? '')
+                                .toString()
+                                .toLowerCase();
 
-                            return shortId.contains(query) || category.contains(query);
+                            return shortId.contains(query) ||
+                                category.contains(query);
                           }).toList();
-
                           // Sort: Newest first
                           filteredDocs.sort((a, b) {
-                            final tA = (a.data() as Map<String, dynamic>)['dateCreated'] as Timestamp?;
-                            final tB = (b.data() as Map<String, dynamic>)['dateCreated'] as Timestamp?;
+                            final tA =
+                                (a.data()
+                                        as Map<String, dynamic>)['dateCreated']
+                                    as Timestamp?;
+                            final tB =
+                                (b.data()
+                                        as Map<String, dynamic>)['dateCreated']
+                                    as Timestamp?;
                             if (tA == null) return 1;
                             if (tB == null) return -1;
                             return tB.compareTo(tA);
@@ -169,13 +196,17 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.folder_open_outlined, size: 60, color: Colors.grey.shade300),
+                                  Icon(
+                                    Icons.folder_open_outlined,
+                                    size: 60,
+                                    color: Colors.grey.shade300,
+                                  ),
                                   const SizedBox(height: 16),
                                   Text(
-                                    _searchQuery.isEmpty 
-                                      ? 'No ticket history found.' 
-                                      : 'No tickets match "$_searchQuery".',
-                                    style: const TextStyle(color: Colors.grey)
+                                    _searchQuery.isEmpty
+                                        ? 'No ticket history found.'
+                                        : 'No tickets match "$_searchQuery".',
+                                    style: const TextStyle(color: Colors.grey),
                                   ),
                                 ],
                               ),
@@ -189,9 +220,12 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                               final doc = filteredDocs[index];
                               final data = doc.data() as Map<String, dynamic>;
                               final status = data['status'] ?? 'Pending';
-                              final timestamp = data['dateCreated'] as Timestamp?;
+                              final timestamp =
+                                  data['dateCreated'] as Timestamp?;
                               final date = timestamp != null
-                                  ? DateFormat('MMM d, yyyy').format(timestamp.toDate())
+                                  ? DateFormat(
+                                      'MMM d, yyyy',
+                                    ).format(timestamp.toDate())
                                   : 'Unknown';
 
                               Color statusColor;
@@ -208,7 +242,9 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                   break;
                                 case 'being validated':
                                   statusColor = Colors.purple;
-                                  statusBgColor = Colors.purple.withOpacity(0.1);
+                                  statusBgColor = Colors.purple.withOpacity(
+                                    0.1,
+                                  );
                                   break;
                                 case 'needs recheck':
                                   statusColor = Colors.red;
@@ -216,7 +252,9 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                   break;
                                 default:
                                   statusColor = Colors.orange;
-                                  statusBgColor = Colors.orange.withOpacity(0.1);
+                                  statusBgColor = Colors.orange.withOpacity(
+                                    0.1,
+                                  );
                               }
 
                               return Padding(
@@ -226,10 +264,11 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => ComplaintDetailScreen(
-                                          ticketId: doc.id,
-                                          data: data,
-                                        ),
+                                        builder: (context) =>
+                                            ComplaintDetailScreen(
+                                              ticketId: doc.id,
+                                              data: data,
+                                            ),
                                       ),
                                     );
                                   },
@@ -250,43 +289,74 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                       children: [
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Row(
                                                 children: [
                                                   Text(
                                                     "ID: #${doc.id.length > 6 ? doc.id.substring(0, 6).toUpperCase() : doc.id}",
-                                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                                    style: TextStyle(
+                                                      color:
+                                                          Colors.grey.shade600,
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 4,
+                                                        ),
                                                     decoration: BoxDecoration(
                                                       color: statusBgColor,
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
                                                     ),
                                                     child: Text(
                                                       status,
-                                                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                                      style: TextStyle(
+                                                        color: statusColor,
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                               const SizedBox(height: 6),
                                               Text(
-                                                data['description'] ?? 'No description',
-                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                                data['description'] ??
+                                                    'No description',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                               const SizedBox(height: 4),
-                                              Text(data['category'] ?? 'General'),
+                                              Text(
+                                                data['category'] ?? 'General',
+                                              ),
                                               const SizedBox(height: 4),
-                                              Text(date, style: const TextStyle(color: Colors.grey)),
+                                              Text(
+                                                date,
+                                                style: const TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
-                                        const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                                        const Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 16,
+                                          color: Colors.grey,
+                                        ),
                                       ],
                                     ),
                                   ),
