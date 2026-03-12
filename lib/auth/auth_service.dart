@@ -8,11 +8,12 @@ class AuthService {
 
   // Single Regex for all staff emails
   final RegExp nileStaffRegex = RegExp(
-    r'^[a-zA-Z0-9]+([.][a-zA-Z0-9]+)*@nileuniversity\.edu\.ng$',
+    r'^[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*@nileuniversity\.edu\.ng$',
     caseSensitive: false,
   );
   final RegExp nileStudentRegex = RegExp(
-     r'^[0-9]{9}@nileuniversity\.edu\.ng$',
+     r'^[0-9]{8}@nileuniversity\.edu\.ng$',
+     caseSensitive: false,
   );
 
   // Access codes
@@ -108,7 +109,7 @@ class AuthService {
       );
     }
     //prevent all students from registering except tester
-    if (!isTester && nileStudentRegex.hasMatch(email)) {
+    if (!isTester && nileStudentRegex.hasMatch(TestEmail)) {
       throw FirebaseAuthException(
         code: 'access-denied',
         message: 'Access Restricted: Student emails are not allowed.',
