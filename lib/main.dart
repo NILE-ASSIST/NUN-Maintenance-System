@@ -15,7 +15,8 @@ import 'package:nileassist/screens/chat_detail.dart';
 //navigation key for notifications to navigate to specific screens
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 // Add this global key so we can navigate from background notifications
-final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> globalNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,40 +34,43 @@ class MyApp extends StatelessWidget {
   // static const Color nileGreen = Color(0xFF8BC34A);
 
   Future<void> setupNotificationRouting() async {
-  //Handle the app being opened from a completely closed (terminated) state
-  RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-  if (initialMessage != null) {
-    _handleNotificationClick(initialMessage);
+    //Handle the app being opened from a completely closed (terminated) state
+    RemoteMessage? initialMessage = await FirebaseMessaging.instance
+        .getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationClick(initialMessage);
+    }
+
+    //Handle the app being opened from the background
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationClick);
   }
 
-  //Handle the app being opened from the background
-  FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationClick);
-}
+  void _handleNotificationClick(RemoteMessage message) {
+    // Check if this notification is specifically a chat message
+    if (message.data['type'] == 'chat_message') {
+      final ticketId = message.data['ticketId'];
+      final targetId = message.data['targetId'];
+      final targetName = message.data['targetName'];
 
-void _handleNotificationClick(RemoteMessage message) {
-  // Check if this notification is specifically a chat message
-  if (message.data['type'] == 'chat_message') {
-    final ticketId = message.data['ticketId'];
-    final targetId = message.data['targetId'];
-    final targetName = message.data['targetName'];
-    
-    //Grab the specific chat folder from the notification payload
-    final chatCollection = message.data['chatCollection'] ?? 'messages'; 
+      //Grab the specific chat folder from the notification payload
+      final chatCollection = message.data['chatCollection'] ?? 'messages';
 
-    //Use Global Key to push to the chatDetail screen
-    globalNavigatorKey.currentState?.push(
-      MaterialPageRoute(
-        builder: (context) => ChatDetail(
-          ticketId: ticketId ?? '',
-          targetName: targetName ?? 'Chat',
-          targetId: targetId ?? '',
-          currentUserData: const {}, // We can pass empty here since ChatDetail uses _auth.currentUser
-          chatCollection: chatCollection, //passes the folder name so it opens the right chat
+      //Use Global Key to push to the chatDetail screen
+      globalNavigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (context) => ChatDetail(
+            ticketId: ticketId ?? '',
+            targetName: targetName ?? 'Chat',
+            targetId: targetId ?? '',
+            currentUserData:
+                const {}, // We can pass empty here since ChatDetail uses _auth.currentUser
+            chatCollection:
+                chatCollection, //passes the folder name so it opens the right chat
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
-}
 
   // This widget is the root of your application.
   @override
@@ -95,7 +99,7 @@ void _handleNotificationClick(RemoteMessage message) {
           }
 
           if (!snapshot.hasData) {
-            return const WelcomeScreen(); 
+            return const WelcomeScreen();
           }
 
           final user = snapshot.data!;
@@ -107,11 +111,18 @@ void _handleNotificationClick(RemoteMessage message) {
           // check profile picture for maintenance staff and supervisors at the same time
           return FutureBuilder<List<DocumentSnapshot>>(
             future: Future.wait([
-              FirebaseFirestore.instance.collection('maintenance').doc(user.uid).get(),
-              FirebaseFirestore.instance.collection('maintenance_supervisors').doc(user.uid).get(),
+              FirebaseFirestore.instance
+                  .collection('maintenance')
+                  .doc(user.uid)
+                  .get(),
+              FirebaseFirestore.instance
+                  .collection('maintenance_supervisors')
+                  .doc(user.uid)
+                  .get(),
             ]),
             builder: (context, maintenanceSnapshot) {
-              if (maintenanceSnapshot.connectionState == ConnectionState.waiting) {
+              if (maintenanceSnapshot.connectionState ==
+                  ConnectionState.waiting) {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
@@ -135,10 +146,11 @@ void _handleNotificationClick(RemoteMessage message) {
                 //if found in either maintenance collection, check for the picture
                 if (targetDoc != null) {
                   final data = targetDoc.data() as Map<String, dynamic>?;
-                  
+
                   // If 'profilePicture' is missing or empty, block access
-                  if (data != null && 
-                     (data['profilePicture'] == null || data['profilePicture'] == '')) {
+                  if (data != null &&
+                      (data['profilePicture'] == null ||
+                          data['profilePicture'] == '')) {
                     return UploadProfileScreen(userId: user.uid);
                   }
                 }
@@ -156,8 +168,8 @@ void _handleNotificationClick(RemoteMessage message) {
 
                   // if fetching data failed (e.g. deleted user), go back to verification or login
                   if (!dataSnapshot.hasData || dataSnapshot.data == null) {
-                     // Fallback, some issue occurred
-                    return const VerifyEmailScreen(); 
+                    // Fallback, some issue occurred
+                    return const VerifyEmailScreen();
                   }
 
                   return MainLayout(userData: dataSnapshot.data!);

@@ -50,9 +50,12 @@ class _MainLayoutState extends State<MainLayout> {
         return const FMDashboard();
       case 'maintenance':
       case 'maintenance_staff':
-        return MaintenanceDashboard(userData: widget.userData, onNavigateToComplaints: () {
+        return MaintenanceDashboard(
+          userData: widget.userData,
+          onNavigateToComplaints: () {
             _onBottomNavTapped(1); // navigate to the complaints tab
-          },);
+          },
+        );
       case 'maintenance_supervisor':
         return const MaintenanceSupervisor();
       default:
@@ -133,7 +136,7 @@ Widget _buildChatIcon() {
         onPageChanged: _onPageChanged,
         children: [
           _getHomeForRole(),
-          ComplaintScreen(userData: widget.userData),
+          ComplaintScreen(),
           if (!isFacilityManager && !isAdmin) ChatScreen(userData: widget.userData),
           ProfileScreen(userData: widget.userData),
         ],
