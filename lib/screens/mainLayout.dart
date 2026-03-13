@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nileassist/main.dart';
+import 'package:nileassist/screens/Newfacility.dart';
 import 'package:nileassist/screens/admin.dart';
 import 'package:nileassist/screens/chat.dart';
 import 'package:nileassist/screens/complaint_screen.dart';
@@ -47,7 +48,7 @@ class _MainLayoutState extends State<MainLayout> {
           },
         );
       case 'facility_manager':
-        return FMDashboard();
+        return const NewFMDashboard();
       case 'maintenance':
       case 'maintenance_staff':
         return MaintenanceDashboard(userData: widget.userData, onNavigateToComplaints: () {
