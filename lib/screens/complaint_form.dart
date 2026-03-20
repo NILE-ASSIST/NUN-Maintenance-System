@@ -36,6 +36,34 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
   bool _isSubmitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.draftData != null) {
+      final data = widget.draftData!;
+      
+      final loc = data['location']?.toString() ?? '';
+      if (loc.contains(', Room ')) {
+        final parts = loc.split(', Room ');
+        if (parts.isNotEmpty) _buildingController.text = parts[0];
+        if (parts.length > 1) _roomController.text = parts[1];
+      } else {
+        _buildingController.text = loc;
+      }
+
+      _detailsController.text = data['description']?.toString() ?? '';
+      
+      final cat = data['category']?.toString() ?? '';
+      if (cat.isNotEmpty) _category = cat;
+
+      final prio = data['priority']?.toString() ?? '';
+      if (prio.isNotEmpty) _priority = prio;
+
+      _attachmentName = data['attachmentName'];
+      _attachmentUrl = data['imageUrl'];
+    }
+  }
+
+  @override
   void dispose() {
     _buildingController.dispose();
     _roomController.dispose();
@@ -365,6 +393,11 @@ class _ComplaintFormPageState extends State<ComplaintFormPage> {
                 if (value.trim().length < 20) return 'Add at least 20 characters so we can assist you better';
                 return null;
               },
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Minimum number of characters: 20',
+              style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 14),
             

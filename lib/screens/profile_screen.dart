@@ -3,6 +3,7 @@ import 'package:nileassist/auth/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:nileassist/main.dart';
+import 'package:nileassist/screens/drafts_screen.dart' as nileassist_drafts;
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -131,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 20),
                         _buildAccountDetailsCard(liveData),
                         const SizedBox(height: 20),
-                        _buildMenuList(),
+                        _buildMenuList(liveData['role']?.toString() ?? 'student'),
                         const SizedBox(height: 30),
                         
                         // Logout Button
@@ -334,7 +335,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuList() {
+  bool _notificationsEnabled = true;
+
+  Widget _buildMenuList(String role) {
+    bool showDrafts = !['maintenance', 'maintenance_staff', 'maintenance_supervisor', 'supervisor', 'facility_manager']
+        .contains(role.toLowerCase());
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -343,25 +349,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          _buildMenuItem("Draft Complaints"),
-          const Divider(height: 1),
-          _buildMenuItem("Notifications"),
-          const Divider(height: 1),
-          _buildMenuItem("Help & Support"),
-          const Divider(height: 1),
-          _buildMenuItem("Privacy Policy"),
+          if (showDrafts) ...[
+            _buildMenuItem(
+              "Draft Complaints",
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const nileassist_drafts.DraftsScreen()));
+              },
+            ),
+            const Divider(height: 1),
+          ],
+          _buildMenuItem(
+            "Notifications",
+            trailing: Switch(
+              value: _notificationsEnabled,
+              onChanged: (value) {
+                setState(() {
+                  _notificationsEnabled = value;
+                });
+              },
+              activeThumbColor: MyApp.nileBlue,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItem(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
-        ],
+  Widget _buildMenuItem(String title, {VoidCallback? onTap, Widget? trailing}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+            if (trailing != null) trailing,
+          ],
+        ),
       ),
     );
   }

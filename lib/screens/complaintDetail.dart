@@ -227,6 +227,45 @@ class ComplaintDetailScreen extends StatelessWidget {
 
                         const SizedBox(height: 30),
 
+                        // Resolution Comments (if resolved)
+                        if (status.toLowerCase() == 'resolved') ...[
+                          const Text("Resolution Comments", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          if (data['resolutionNotes'] != null && data['resolutionNotes'].toString().isNotEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Maintenance Staff:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
+                                  const SizedBox(height: 4),
+                                  Text(data['resolutionNotes'], style: const TextStyle(color: Colors.black87, height: 1.4)),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          if (data['issuerComment'] != null && data['issuerComment'].toString().isNotEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.shade100)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Issuer:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                                  const SizedBox(height: 4),
+                                  Text(data['issuerComment'], style: const TextStyle(color: Colors.black87, height: 1.4)),
+                                ],
+                              ),
+                            ),
+                          if ((data['resolutionNotes'] == null || data['resolutionNotes'].toString().isEmpty) && 
+                              (data['issuerComment'] == null || data['issuerComment'].toString().isEmpty))
+                            Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)), child: const Text("No comments provided.", style: TextStyle(color: Colors.grey))),
+                          const SizedBox(height: 30),
+                        ],
+
                         // Timeline and Attachment
                         StatusTimeline(status: status, data: data),
                         const SizedBox(height: 30),
