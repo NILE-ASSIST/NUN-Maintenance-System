@@ -86,7 +86,7 @@ class FMDashboard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          ComplaintDetailScreen(ticketId: doc.id, data: data),
+                          ComplaintDetailScreen(ticketId: doc.id, data: data, currentUserRole: 'facility_manager'),
                     ),
                   );
                 },

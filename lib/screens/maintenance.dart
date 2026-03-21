@@ -377,7 +377,7 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
           context,
           MaterialPageRoute(
             builder: (context) =>
-                ComplaintDetailScreen(ticketId: ticketId, data: data),
+                ComplaintDetailScreen(ticketId: ticketId, data: data, currentUserRole: 'maintenance_staff'),
           ),
         );
       },

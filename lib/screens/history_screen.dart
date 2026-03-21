@@ -5,7 +5,8 @@ import 'package:nileassist/screens/complaintDetail.dart';
 import 'package:nileassist/widgets/reusable_searchbar.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final String currentUserRole;
+  const HistoryScreen({super.key, this.currentUserRole = ''});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -213,7 +214,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ComplaintDetailScreen(ticketId: docId, data: data),
+            builder: (context) => ComplaintDetailScreen(ticketId: docId, data: data, currentUserRole: widget.currentUserRole),
           ),
         );
       },

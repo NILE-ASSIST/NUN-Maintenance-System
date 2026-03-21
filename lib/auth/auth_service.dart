@@ -198,13 +198,13 @@ class AuthService {
     }
   }
 
+  //Performance Optimization for User login
   Future<Map<String, dynamic>> loginUser({
     required String identifier, // Changed from 'email' to 'identifier'
     required String password,
   }) async {
     String loginEmail = identifier.trim();
 
-    // user login with staff id
     if (!loginEmail.contains('@')) {
       String searchId = loginEmail.toUpperCase();
       String? foundEmail;
@@ -218,13 +218,17 @@ class AuthService {
         'hostel_supervisors',
       ];
 
-      for (String col in searchCollections) {
-        QuerySnapshot query = await _firestore
+      List<Future<QuerySnapshot>> futures = searchCollections.map((col) {
+        return _firestore
             .collection(col)
             .where('staffId', isEqualTo: searchId)
             .limit(1)
             .get();
+      }).toList();
 
+      List<QuerySnapshot> results = await Future.wait(futures);
+
+      for (QuerySnapshot query in results) {
         if (query.docs.isNotEmpty) {
           foundEmail = query.docs.first['email'];
           break;
@@ -240,12 +244,11 @@ class AuthService {
     }
 
     UserCredential credential = await _auth.signInWithEmailAndPassword(
-      email:loginEmail, // Now safely passes either the typed email or the resolved email
+      email: loginEmail,
       password: password,
     );
     User user = credential.user!;
 
-    // Search all collections since the role is unknown
     List<String> collections = [
       'lecturers',
       'admins',
@@ -258,11 +261,14 @@ class AuthService {
     DocumentSnapshot? userDoc;
     String? foundRole;
 
-    for (String col in collections) {
-      DocumentSnapshot doc = await _firestore
-          .collection(col)
-          .doc(user.uid)
-          .get();
+    List<Future<DocumentSnapshot>> docFutures = collections.map((col) {
+      return _firestore.collection(col).doc(user.uid).get();
+    }).toList();
+
+    List<DocumentSnapshot> docResults = await Future.wait(docFutures);
+
+    // get the one that actually exists
+    for (DocumentSnapshot doc in docResults) {
       if (doc.exists) {
         userDoc = doc;
         foundRole = doc['role'];
@@ -274,11 +280,11 @@ class AuthService {
       throw Exception('User profile not found. Please contact support.');
     }
 
-    //ensures that the current device is the active one for notifications and ensures the database has the latest token for the user
+    // ensures that the current device is the active one for notifications and ensures the database has the latest token for the user
     try {
       final notifService = NotificationService();
 
-      //setup listeners (background/foreground)
+      // setup listeners (background/foreground)
       notifService.initialize();
 
       // 2. forces the token into the database immediately

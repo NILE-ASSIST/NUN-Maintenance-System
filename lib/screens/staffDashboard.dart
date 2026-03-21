@@ -343,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           context,
           MaterialPageRoute(
             builder: (context) =>
-                ComplaintDetailScreen(ticketId: ticketId, data: data),
+                ComplaintDetailScreen(ticketId: ticketId, data: data, currentUserRole: widget.userData['role'] ?? ''),
           ),
         );
       },

@@ -369,7 +369,7 @@ class NewFMDashboard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ComplaintDetailScreen(ticketId: doc.id, data: data),
+            builder: (_) => ComplaintDetailScreen(ticketId: doc.id, data: data, currentUserRole: 'facility_manager'),
           ),
         );
       },

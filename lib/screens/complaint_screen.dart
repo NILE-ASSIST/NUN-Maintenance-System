@@ -268,6 +268,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                             ComplaintDetailScreen(
                                               ticketId: doc.id,
                                               data: data,
+                                              currentUserRole: (widget.userData['role'] ?? '').toString(),
                                             ),
                                       ),
                                     );

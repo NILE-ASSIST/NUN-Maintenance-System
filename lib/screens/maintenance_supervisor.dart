@@ -102,7 +102,7 @@ class MaintenanceSupervisor extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ComplaintDetailScreen(ticketId: id, data: data)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ComplaintDetailScreen(ticketId: id, data: data, currentUserRole: 'maintenance_supervisor')));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),

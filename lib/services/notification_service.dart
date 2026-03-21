@@ -137,6 +137,19 @@ class NotificationService {
       print("User tapped notification for ticket: $ticketId");
 
       try {
+        final user = FirebaseAuth.instance.currentUser;
+        String currentUserRole = '';
+        if (user != null) {
+          final collections = ['lecturers', 'hostel_supervisors', 'facility_managers', 'maintenance_supervisors', 'maintenance'];
+          for (var col in collections) {
+            final doc = await FirebaseFirestore.instance.collection(col).doc(user.uid).get();
+            if (doc.exists) {
+              currentUserRole = (doc.data()?['role'] ?? col).toString();
+              break;
+            }
+          }
+        }
+
         //get the ticket data from Firestore using the ID
         final docSnapshot = await FirebaseFirestore.instance
             .collection('tickets')
@@ -152,6 +165,7 @@ class NotificationService {
               builder: (context) => ComplaintDetailScreen(
                 ticketId: ticketId,
                 data: data,
+                currentUserRole: currentUserRole,
               ),
             ),
           );
@@ -169,7 +183,7 @@ class NotificationService {
     if (user == null) return;
 
     final collections = [
-      'students',
+      'hostel_supervisors',
       'lecturers',
       'facility_managers',
       'maintenance_supervisors',
@@ -198,7 +212,7 @@ class NotificationService {
 
     // List of all user collections
     final collections = [
-      'students', 
+      'hostel_supervisors', 
       'lecturers', 
       'facility_managers', 
       'maintenance_supervisors', 

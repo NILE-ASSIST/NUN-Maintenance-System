@@ -10,34 +10,18 @@ import 'package:nileassist/widgets/complaint_info_widget.dart';
 class ComplaintDetailScreen extends StatelessWidget {
   final String ticketId;
   final Map<String, dynamic> data;
+  final String currentUserRole;
   final TicketService _ticketService = TicketService();
 
   ComplaintDetailScreen({
     super.key,
     required this.ticketId,
     required this.data,
+    required this.currentUserRole,
   });
 
   String get currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
   bool get isIssuer => data['issuerID'] == currentUid;
-
-  Future<bool> _isFacilityManager() async {
-    if (currentUid.isEmpty) return false;
-    final doc = await FirebaseFirestore.instance.collection('facility_managers').doc(currentUid).get();
-    return doc.exists;
-  }
-
-  Future<bool> _isSupervisor() async {
-    if (currentUid.isEmpty) return false;
-    final doc = await FirebaseFirestore.instance.collection('maintenance_supervisors').doc(currentUid).get();
-    return doc.exists;
-  }
-
-  Future<bool> _isMaintenanceStaff() async {
-    if (currentUid.isEmpty) return false;
-    final doc = await FirebaseFirestore.instance.collection('maintenance').doc(currentUid).get();
-    return doc.exists;
-  }
 
   void _showSupervisorDialog(BuildContext context, String category) {
     showDialog(
@@ -101,18 +85,21 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final Timestamp? timestamp = data['dateCreated'] as Timestamp?;
     final String dateStr = timestamp != null ? DateFormat('MMMM d, yyyy • h:mm a').format(timestamp.toDate()) : 'Unknown Date';
     final String status = data['status'] ?? 'Pending';
     final String category = data['category'] ?? 'General';
+    
+    // Normalize role and status for cleaner if statements below
+    final String userRole = currentUserRole.toLowerCase();
+    final String lowerStatus = status.toLowerCase();
 
     Color statusColor;
     Color statusBgColor;
 
-    switch (status.toLowerCase()) {
+    switch (lowerStatus) {
       case 'resolved': statusColor = const Color(0xFF27AE60); statusBgColor = const Color(0xFFE9F7EF); break;
       case 'being validated': statusColor = const Color(0xFF8E44AD); statusBgColor = const Color(0xFFF4ECF7); break;
       case 'needs recheck': statusColor = const Color(0xFFC0392B); statusBgColor = const Color(0xFFF9EBEA); break;
@@ -126,7 +113,6 @@ class ComplaintDetailScreen extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            // Custom Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: Row(
@@ -193,16 +179,10 @@ class ComplaintDetailScreen extends StatelessWidget {
                         Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
                         const SizedBox(height: 16),
                         
-                        //Priority 
-                        FutureBuilder<bool>(
-                          future: _isFacilityManager(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData && snapshot.data == true) {
-                              return FacilityManagerPriorityEditor(ticketId: ticketId, initialPriority: data['priority'] ?? 'Medium');
-                            }
-                            return PriorityBadge(priorityLevel: data['priority']);
-                          },
-                        ),
+                        //Facility manager priority editor
+                        (userRole == 'facility_manager')
+                            ? FacilityManagerPriorityEditor(ticketId: ticketId, initialPriority: data['priority'] ?? 'Medium')
+                            : PriorityBadge(priorityLevel: data['priority']),
                         
                         const SizedBox(height: 24),
                         const Divider(height: 1),
@@ -219,7 +199,7 @@ class ComplaintDetailScreen extends StatelessWidget {
                         const SizedBox(height: 20),
                         PersonCard(title: "Issuer Info", name: data['issuerName'] ?? 'No name', role: data['issuerRole'] ?? 'Unknown role', icon: Icons.person_outline, isEmail: true),
                         
-                        //Assigned Personnel
+                        // Assigned Personnel
                         if (data['assignedTo'] != null)
                           AsyncPersonCard(title: "Assigned Supervisor", userId: data['assignedTo'], collection: 'maintenance_supervisors'),
                         if (data['assignedStaffId'] != null)
@@ -282,8 +262,8 @@ class ComplaintDetailScreen extends StatelessWidget {
                            
                         const SizedBox(height: 40),
 
-                        // Action button for Issuer
-                        if (isIssuer && status == 'Being Validated')
+                        // 1. Action button for Issuer
+                        if (isIssuer && lowerStatus == 'being validated')
                           Row(
                             children: [
                               Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectCompletion(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.orange), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject Completion", style: TextStyle(color: Colors.deepOrange)))),
@@ -293,43 +273,23 @@ class ComplaintDetailScreen extends StatelessWidget {
                           ),
 
                         // Maintenance Staff
-                        FutureBuilder<bool>(
-                          future: _isMaintenanceStaff(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData && snapshot.data == true && data['assignedStaffId'] == currentUid && (status == 'In Progress' || status == 'Needs Recheck')) {
-                              return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _ticketService.markAsDoneByStaff(context, ticketId, data), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Mark as Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
+                        if ((userRole == 'maintenance' || userRole == 'maintenance_staff') && data['assignedStaffId'] == currentUid && (lowerStatus == 'in progress' || lowerStatus == 'needs recheck'))
+                          SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _ticketService.markAsDoneByStaff(context, ticketId, data), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Mark as Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
 
                         // Facility Manager
-                        FutureBuilder<bool>(
-                          future: _isFacilityManager(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData && snapshot.data == true && status.toLowerCase() == 'pending') {
-                              return Row(
-                                children: [
-                                  Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectTicket(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
-                                  const SizedBox(width: 16),
-                                  Expanded(child: ElevatedButton(onPressed: () => _showSupervisorDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Accept & Assign", style: TextStyle(color: Colors.white)))),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
+                        if ((userRole == 'facility_manager' || userRole == 'admin') && lowerStatus == 'pending')
+                          Row(
+                            children: [
+                              Expanded(child: OutlinedButton(onPressed: () => _ticketService.rejectTicket(context, ticketId, data), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
+                              const SizedBox(width: 16),
+                              Expanded(child: ElevatedButton(onPressed: () => _showSupervisorDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Accept & Assign", style: TextStyle(color: Colors.white)))),
+                            ],
+                          ),
 
-                        // Maintenance Supervisor
-                        FutureBuilder<bool>(
-                          future: _isSupervisor(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData && snapshot.data == true && data['assignedTo'] == currentUid && ['pending', 'in progress', 'needs recheck'].contains(status.toLowerCase())) {
-                              return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _showStaffDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(data['assignedStaffId'] != null ? "Re-Assign Staff" : "Assign Staff", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
+                        //Maintenance Supervisor
+                        if ((userRole == 'maintenance_supervisor' || userRole == 'supervisor') && data['assignedTo'] == currentUid && ['pending', 'in progress', 'needs recheck'].contains(lowerStatus))
+                          SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _showStaffDialog(context, category), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3DD3), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(data['assignedStaffId'] != null ? "Re-Assign Staff" : "Assign Staff", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
+
                       ],
                     ),
                   ),
