@@ -182,7 +182,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         : '--';
 
     final String shortId = docId.length > 6 ? docId.substring(0, 6).toUpperCase() : docId.toUpperCase();
-    final String remarks = data['resolutionNotes'] ?? 'Closed by system / manager.';
 
     // Priority Styling Logic
     Color priorityColor;
@@ -354,28 +353,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        remarks,
-                        style: const TextStyle(
-                          color: Color(0xFF969696),
-                          fontSize: 9,
-                          fontStyle: FontStyle.italic,
-    
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Completed $completedDateStr',
-                        style: const TextStyle(
-                           color: Color(0xFF969696),
-                          fontSize: 8,
-    
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Completed $completedDateStr',
+                    style: const TextStyle(
+                       color: Color(0xFF969696),
+                      fontSize: 8,
+
+                    ),
                   ),
                 ),
               ],
