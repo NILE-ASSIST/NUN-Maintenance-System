@@ -117,6 +117,7 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
                     }
 
                     final allDocs = snapshot.data!.docs;
+                    
                     //stat logic
                     int assignedCount = allDocs.where((d) {
                       final status =
@@ -161,15 +162,15 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
                       return status == 'resolved';
                     }).length;
 
-                    //Filter only Pending tickets for the List
-                    final pendingDocs = allDocs.where((doc) {
+                    //filters only in-progress tickets for the list
+                    final inProgressDocs = allDocs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final status = data['status']?.toString().toLowerCase() ?? '';
-                      return status == 'pending' || status == 'assigned';
+                      return status == 'in progress';
                     }).toList();
 
-                    // Sort locally by date (newest first)
-                    pendingDocs.sort((a, b) {
+                    // sorting locally by date (newest first)
+                    inProgressDocs.sort((a, b) {
                       final dataA = a.data() as Map<String, dynamic>;
                       final dataB = b.data() as Map<String, dynamic>;
                       Timestamp? tA =
@@ -193,9 +194,7 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
                           ),
 
                           const SizedBox(height: 40),
-
-                          //Task section
-                          _recentTicketsSection(pendingDocs),
+                          _recentTicketsSection(inProgressDocs),
                         ],
                       ),
                     );
@@ -288,7 +287,7 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
   }
 
   Widget _recentTicketsSection(List<QueryDocumentSnapshot> complaints) {
-    // only 3 most recent pending tickets are displayed
+    // only 3 most recent in-progress tickets are displayed
     final recentComplaints = complaints.take(3).toList();
 
     return Padding(
@@ -327,7 +326,7 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
               ),
               child: const Center(
                 child: Text(
-                  "No pending tickets.",
+                  "No tickets currently in progress.",
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
@@ -335,14 +334,12 @@ class _MaintenanceDashboardState extends State<MaintenanceDashboard> {
           else
             ...recentComplaints.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              final status = data['status'] ?? 'Pending';
+              final status = data['status'] ?? 'In Progress';
               final timestamp = data['dateStaffAssigned'] ?? data['dateCreated'] as Timestamp?;
               final date = timestamp != null
                   ? DateFormat('MMM d, h:mm a').format(timestamp.toDate())
                   : 'Just now';
-
-              // Only needed to style Pending
-              Color statusColor = Colors.orange;
+              Color statusColor = const Color(0xFF3498DB); 
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),

@@ -14,6 +14,7 @@ class AdminController {
       'facility_managers',
       'hostel_supervisors',
       'maintenance',
+      'maintenance_supervisors',
       'admins',
     ];
 
@@ -33,7 +34,7 @@ class AdminController {
   Future<int> countTotalComplaints() async {
     int totalComplaints = 0;
     final firestore = FirebaseFirestore.instance;
-    final snapshot = await firestore.collection('complaints').count().get();
+    final snapshot = await firestore.collection('tickets').count().get();
     totalComplaints = snapshot.count ?? 0;
     return totalComplaints;
   }
@@ -42,8 +43,8 @@ class AdminController {
     // int totalComplaints = 0;
     final firestore = FirebaseFirestore.instance;
     final snapshot = await firestore
-        .collection('complaints')
-        .where('status', isEqualTo: 'pending')
+        .collection('tickets')
+        .where('status', isEqualTo: 'Pending')
         .count()
         .get();
     return snapshot.count ?? 0;
@@ -54,8 +55,8 @@ class AdminController {
     // int totalComplaints = 0;
     final firestore = FirebaseFirestore.instance;
     final snapshot = await firestore
-        .collection('complaints')
-        .where('status', isEqualTo: 'resolved')
+        .collection('tickets')
+        .where('status', isEqualTo: 'Resolved')
         .count()
         .get();
     return snapshot.count ?? 0;

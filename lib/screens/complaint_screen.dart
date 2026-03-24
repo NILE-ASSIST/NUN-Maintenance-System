@@ -159,7 +159,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                                 .toString()
                                 .toLowerCase();
 
-                            // 🔴 NEW: If the ticket is resolved, hide it from everyone
+                            //if the ticket is resolved, hide it from everyone
                             if (status == 'resolved') return false;
 
                             // Existing search logic
@@ -178,16 +178,28 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                           }).toList();
                           // Sort: Newest first
                           filteredDocs.sort((a, b) {
-                            final tA =
-                                (a.data()
-                                        as Map<String, dynamic>)['dateCreated']
-                                    as Timestamp?;
-                            final tB =
-                                (b.data()
-                                        as Map<String, dynamic>)['dateCreated']
-                                    as Timestamp?;
+                            final dataA = a.data() as Map<String, dynamic>;
+                            final dataB = b.data() as Map<String, dynamic>;
+
+                            final statusA = (dataA['status'] ?? '').toString().toLowerCase();
+                            final statusB = (dataB['status'] ?? '').toString().toLowerCase();
+
+                            //identify status tags
+                            final bool isPriorityA = statusA == 'being validated' || statusA == 'needs recheck';
+                            final bool isPriorityB = statusB == 'being validated' || statusB == 'needs recheck';
+
+                            //move status tickets to the top
+                            if (isPriorityA && !isPriorityB) return -1; // A moves up
+                            if (!isPriorityA && isPriorityB) return 1;  // B moves up
+
+                            //if both tickets have the same status tag, sort by Date (Newest first)
+                            final tA = dataA['dateCreated'] as Timestamp?;
+                            final tB = dataB['dateCreated'] as Timestamp?;
+                            
+                            if (tA == null && tB == null) return 0;
                             if (tA == null) return 1;
                             if (tB == null) return -1;
+                            
                             return tB.compareTo(tA);
                           });
 

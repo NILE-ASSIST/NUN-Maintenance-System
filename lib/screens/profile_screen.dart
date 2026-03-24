@@ -25,9 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   //sync function
   Future<void> _checkEmailVerification() async {
-    //Stop condition:
     // If the data passed to this screen says verified, stop.
-    //
     if (widget.userData['emailVerified'] == true) {
       return; 
     }
@@ -75,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (role == 'maintenance' || role == 'maintenance_staff') return 'maintenance';
     if (role == 'maintenance_supervisor') return 'maintenance_supervisors';
     if (role == 'facility_manager') return 'facility_managers';
+    if (role == 'admin') return 'admins';
     return 'lecturers'; // default
   }
 
@@ -109,6 +108,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             liveData = snapshot.data!.data() as Map<String, dynamic>;
           }
 
+          //checks if the user is an Admin or Facility Manager
+          final String currentRole = (liveData['role'] ?? 'student').toString().toLowerCase();
+          final bool isAdminOrFM = currentRole == 'admin' || currentRole == 'facility_manager';
+
           return Column(
             children: [
               const SizedBox(height: 20),
@@ -128,11 +131,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         // Pass liveData to widgets
-                        _buildProfileCard(liveData),
+                        _buildProfileCard(liveData, isAdminOrFM),
                         const SizedBox(height: 20),
                         _buildAccountDetailsCard(liveData),
-                        const SizedBox(height: 20),
-                        _buildMenuList(liveData['role']?.toString() ?? 'student'),
+                        
+                        //only shows the menu list and spacing if they are NOT an Admin or Facility Manager
+                        if (!isAdminOrFM) ...[
+                          const SizedBox(height: 20),
+                          _buildMenuList(currentRole),
+                        ],
+                        
                         const SizedBox(height: 30),
                         
                         // Logout Button
@@ -174,10 +182,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Updated to accept data map
-  Widget _buildProfileCard(Map<String, dynamic> data) {
+
+  Widget _buildProfileCard(Map<String, dynamic> data, bool isAdminOrFM) {
     final user = FirebaseAuth.instance.currentUser;
-    final role = (data['role'] ?? 'student').toString().toLowerCase();
+    final role = (data['role']).toString().toLowerCase();
 
     Stream<QuerySnapshot> getTicketStream() {
       if (user == null) return const Stream.empty();
@@ -216,49 +224,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? const Icon(Icons.account_circle, size: 60, color: Colors.white)
                 : null,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 10, width: 320,),
           Text(
             data['fullName'] ?? 'User',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
           ),
-          const SizedBox(height: 20),
+          
+          //builds the StreamBuilder for stats if NOT an Admin/FM
+          if (!isAdminOrFM) ...[
+            const SizedBox(height: 20),
+            StreamBuilder<QuerySnapshot>(
+              stream: getTicketStream(),
+              builder: (context, snapshot) {
+                String totalCount = "0";
+                String resolvedCount = "0";
 
-          StreamBuilder<QuerySnapshot>(
-            stream: getTicketStream(),
-            builder: (context, snapshot) {
-              String totalCount = "0";
-              String resolvedCount = "0";
+                if (snapshot.hasData) {
+                  final docs = snapshot.data!.docs;
+                  
+                  totalCount = docs.where((doc) {
+                    final status = (doc.data() as Map)['status']?.toString().toLowerCase() ?? '';
+                    return status == 'assigned' || 
+                           status == 'pending' || 
+                           status == 'in progress' || 
+                           status == 'being validated' || 
+                           status == 'needs recheck';
+                  }).length.toString();
+                  
+                  resolvedCount = docs
+                      .where((doc) {
+                        final status = (doc.data() as Map)['status']?.toString().toLowerCase() ?? '';
+                        return status == 'resolved'; 
+                      })
+                      .length
+                      .toString();
+                }
 
-              if (snapshot.hasData) {
-                final docs = snapshot.data!.docs;
-                
-                totalCount = docs.where((doc) {
-                  final status = (doc.data() as Map)['status']?.toString().toLowerCase() ?? '';
-                  return status == 'assigned' || 
-                         status == 'pending' || 
-                         status == 'in progress' || 
-                         status == 'being validated' || 
-                         status == 'needs recheck';
-                }).length.toString();
-                
-                resolvedCount = docs
-                    .where((doc) {
-                      final status = (doc.data() as Map)['status']?.toString().toLowerCase() ?? '';
-                      return status == 'resolved'; 
-                    })
-                    .length
-                    .toString();
-              }
-
-              return Row(
-                children: [
-                  Expanded(child: _buildStatBox(totalCount, totalLabel)),
-                  const SizedBox(width: 15),
-                  Expanded(child: _buildStatBox(resolvedCount, "Resolved")), 
-                ],
-              );
-            },
-          ),
+                return Row(
+                  children: [
+                    Expanded(child: _buildStatBox(totalCount, totalLabel)),
+                    const SizedBox(width: 15),
+                    Expanded(child: _buildStatBox(resolvedCount, "Resolved")), 
+                  ],
+                );
+              },
+            ),
+          ]
         ],
       ),
     );
@@ -338,7 +349,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _notificationsEnabled = true;
 
   Widget _buildMenuList(String role) {
-    bool showDrafts = !['maintenance', 'maintenance_staff', 'maintenance_supervisor', 'supervisor', 'facility_manager']
+    bool showDrafts = !['maintenance', 'maintenance_staff', 'maintenance_supervisor', 'facility_manager', 'admin']
         .contains(role.toLowerCase());
 
     return Container(

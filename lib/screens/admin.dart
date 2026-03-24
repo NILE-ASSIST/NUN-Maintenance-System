@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nileassist/main.dart';
 import 'package:nileassist/models/admin.dart';
 import 'package:nileassist/screens/history_screen.dart' as nileassist_history;
 
@@ -31,7 +32,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 DashboardInfoCard(
                   title: 'Active Users',
                   icon: Icons.check_circle_outline,
-                  backgroundColor: nileBlue,
+                  backgroundColor: MyApp.nileBlue,
                   futureData: _controller.countTotalUsers(),
                 ),
       
@@ -62,7 +63,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             label: 'Total',
                             staticValue: null,
                             futureValue: _controller.countTotalComplaints(),
-                            color: nileBlue,
+                            color: MyApp.nileBlue,
                           ),
                           MiniStatBox(
                             label: 'Pending',
@@ -74,7 +75,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             label: 'Resolved',
                             staticValue: '0',
                             futureValue: _controller.countResolvedComplaints(),
-                            color: Colors.green,
+                            color: MyApp.nileGreen,
                           ),
                         ],
                       ),
@@ -96,19 +97,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Image.asset('assets/images/logo-removebg-preview.png', width: 130),
         Row(
           children: [
-            IconButton(
-              icon: Icon(
-                Icons.history,
-                color: nileBlue,
-                size: 28,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const nileassist_history.HistoryScreen()),
-                );
-              },
-            ),
+            // IconButton(
+            //   icon: Icon(
+            //     Icons.history,
+            //     color: nileBlue,
+            //     size: 28,
+            //   ),
+            //   onPressed: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const nileassist_history.HistoryScreen()),
+            //     );
+            //   },
+            // ),
             IconButton(
               icon: Icon(
                 Icons.notifications_none_outlined,

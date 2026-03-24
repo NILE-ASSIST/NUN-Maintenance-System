@@ -99,6 +99,7 @@ class AuthService {
         TestEmail == '20220985@nileuniversity.edu.ng' ||
         TestEmail == '20220144@nileuniversity.edu.ng' ||
         TestEmail == 'amangisundayjr@outlook.com' ||
+        TestEmail == 'capoqueen71@gmail.com' ||
         TestEmail == 'aduray49@gmail.com';
 
     if (!isTester && !nileStaffRegex.hasMatch(TestEmail)) {

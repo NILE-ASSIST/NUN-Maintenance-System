@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nileassist/main.dart';
+import 'package:nileassist/screens/Admin_AnnounceScreen.dart';
+import 'package:nileassist/screens/Admin_CodeScreen.dart';
 import 'package:nileassist/screens/Newfacility.dart';
 import 'package:nileassist/screens/admin.dart';
 import 'package:nileassist/screens/chat.dart';
@@ -9,7 +11,7 @@ import 'package:nileassist/screens/complaint_screen.dart';
 import 'package:nileassist/screens/maintenance_supervisor.dart';
 import 'package:nileassist/screens/profile_screen.dart';
 import 'package:nileassist/screens/staffdashboard.dart';
-import 'package:nileassist/screens/facilitymanager.dart';
+// import 'package:nileassist/screens/facilitymanager.dart';
 import 'package:nileassist/screens/maintenance.dart';
 
 class MainLayout extends StatefulWidget {
@@ -134,8 +136,11 @@ Widget _buildChatIcon() {
         onPageChanged: _onPageChanged,
         children: [
           _getHomeForRole(),
-          ComplaintScreen(userData: widget.userData),
+          if (!isAdmin) ComplaintScreen(userData: widget.userData),
+          // ComplaintScreen(userData: widget.userData),
           if (!isFacilityManager && !isAdmin) ChatScreen(userData: widget.userData),
+          if (isAdmin) AdminCodescreen(),
+          if (isAdmin) AdminAnnouncescreen(),
           ProfileScreen(userData: widget.userData),
         ],
       ),
@@ -152,14 +157,29 @@ Widget _buildChatIcon() {
             icon: Icon(Icons.home_outlined),
             label: "Home",
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number_outlined),
-            label: "Complaints",
-          ),
+          if (!isAdmin)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.confirmation_number_outlined),
+              label: "Complaints",
+            ),
+          // const BottomNavigationBarItem(
+          //   icon: Icon(Icons.confirmation_number_outlined),
+          //   label: "Complaints",
+          // ),
           if (!isFacilityManager && !isAdmin)
             BottomNavigationBarItem(
               icon: _buildChatIcon(),
               label: "Chats",
+            ),
+          if (isAdmin)
+            BottomNavigationBarItem(
+             icon: Icon(Icons.lock),
+            label: "Code",
+            ),
+          if (isAdmin)
+            BottomNavigationBarItem(
+             icon: Icon(Icons.campaign_rounded),
+            label: "Notices",
             ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
