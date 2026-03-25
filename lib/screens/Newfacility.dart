@@ -5,12 +5,33 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:nileassist/main.dart';
 import 'package:nileassist/screens/complaintDetail.dart';
+import 'package:nileassist/screens/history_screen.dart' as nileassist_history;
 
 class NewFMDashboard extends StatelessWidget {
   const NewFMDashboard({super.key});
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _ticketsStream() {
     return FirebaseFirestore.instance.collection('tickets').snapshots();
+  }
+
+  String _normalizedStatus(dynamic status) {
+    return (status ?? '').toString().trim().toLowerCase();
+  }
+
+  bool _isPendingStatus(String status) {
+    return status == 'pending';
+  }
+
+  bool _isInProgressStatus(String status) {
+    return status == 'in progress' ||
+        status == 'ongoing' ||
+        status == 'being validated' ||
+        status == 'assigned' ||
+        status == 'needs recheck';
+  }
+
+  bool _isResolvedStatus(String status) {
+    return status == 'resolved' || status == 'completed';
   }
 
   @override
@@ -38,13 +59,19 @@ class NewFMDashboard extends StatelessWidget {
               });
 
             final stats = _buildStats(docs);
-            final recentComplaints = docs.take(3).toList();
+            final recentPendingTickets = docs
+                .where((doc) {
+                  final status = _normalizedStatus(doc.data()['status']);
+                  return _isPendingStatus(status);
+                })
+                .take(3)
+                .toList();
 
             return Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-                  child: _buildHeroHeader(),
+                  child: _buildHeroHeader(context),
                 ),
                 Expanded(
                   child: Container(
@@ -57,7 +84,7 @@ class NewFMDashboard extends StatelessWidget {
                         topRight: Radius.circular(40),
                       ),
                     ),
-                    child: _buildBodyCard(context, stats, recentComplaints),
+                    child: _buildBodyCard(context, stats, recentPendingTickets),
                   ),
                 ),
               ],
@@ -73,26 +100,20 @@ class NewFMDashboard extends StatelessWidget {
     int inProgress = 0;
     int resolved = 0;
 
-    final activeUsers = <String>{};
     final categories = <String, int>{};
 
     for (final doc in docs) {
       final data = doc.data();
-      final status = (data['status'] ?? '').toString().trim().toLowerCase();
-      final issuerId = (data['issuerID'] ?? '').toString();
+      final status = _normalizedStatus(data['status']);
       final category = (data['category'] ?? 'General').toString();
-
-      if (issuerId.isNotEmpty) {
-        activeUsers.add(issuerId);
-      }
 
       categories[category] = (categories[category] ?? 0) + 1;
 
-      if (status == 'pending') {
+      if (_isPendingStatus(status)) {
         pending += 1;
-      } else if (status == 'in progress' || status == 'ongoing' || status == 'being validated') {
+      } else if (_isInProgressStatus(status)) {
         inProgress += 1;
-      } else if (status == 'resolved' || status == 'completed') {
+      } else if (_isResolvedStatus(status)) {
         resolved += 1;
       }
     }
@@ -108,13 +129,12 @@ class NewFMDashboard extends StatelessWidget {
       'total': docs.length,
       'inProgress': inProgress,
       'pending': pending,
-      'activeUsers': activeUsers.length,
       'resolved': resolved,
       'frequentIssues': frequentIssueCount,
     };
   }
 
-  Widget _buildHeroHeader() {
+  Widget _buildHeroHeader(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -147,7 +167,19 @@ class NewFMDashboard extends StatelessWidget {
                 ],
               ),
             ),
-            _iconChip(Icons.timer_outlined),
+            _iconChip(
+              Icons.timer_outlined,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const nileassist_history.HistoryScreen(
+                      currentUserRole: 'facility_manager',
+                    ),
+                  ),
+                );
+              },
+            ),
             const SizedBox(width: 10),
             _iconChip(Icons.notifications_none_rounded),
           ],
@@ -165,22 +197,26 @@ class NewFMDashboard extends StatelessWidget {
     );
   }
 
-  Widget _iconChip(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.42)),
+  Widget _iconChip(IconData icon, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(9),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.42)),
+        ),
+        child: Icon(icon, color: Colors.white, size: 19),
       ),
-      child: Icon(icon, color: Colors.white, size: 19),
     );
   }
 
   Widget _buildBodyCard(
     BuildContext context,
     Map<String, int> stats,
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> recentComplaints,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> recentPendingTickets,
   ) {
     final items = [
       _StatItem(
@@ -203,13 +239,6 @@ class NewFMDashboard extends StatelessWidget {
         Icons.access_time_filled_rounded,
         const Color(0xFFEF9C14),
         const Color(0xFFFFF5E4),
-      ),
-      _StatItem(
-        'Active Users',
-        stats['activeUsers'] ?? 0,
-        Icons.group_rounded,
-        const Color(0xFF555B6D),
-        const Color(0xFFEFF2F8),
       ),
       _StatItem(
         'Resolved',
@@ -248,14 +277,16 @@ class NewFMDashboard extends StatelessWidget {
             return Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: items
-                  .map(
-                    (item) => SizedBox(
-                      width: cardWidth,
-                      child: _statCard(item),
-                    ),
-                  )
-                  .toList(),
+              children: items.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                final isLastOddCard = items.length.isOdd && index == items.length - 1;
+
+                return SizedBox(
+                  width: isLastOddCard ? constraints.maxWidth : cardWidth,
+                  child: _statCard(item),
+                );
+              }).toList(),
             );
           },
         ),
@@ -264,7 +295,7 @@ class NewFMDashboard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Recent Complaints',
+              'Pending Tasks',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -284,10 +315,10 @@ class NewFMDashboard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        if (recentComplaints.isEmpty)
+        if (recentPendingTickets.isEmpty)
           _emptyCard()
         else
-          ...recentComplaints.map((doc) => Padding(
+          ...recentPendingTickets.map((doc) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _complaintCard(context, doc),
               )),
@@ -353,7 +384,7 @@ class NewFMDashboard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text('No complaints found right now.'),
+      child: const Text('No pending tickets found right now.'),
     );
   }
 
@@ -435,15 +466,15 @@ class NewFMDashboard extends StatelessWidget {
   }
 
   Widget _statusChip(String status) {
-    final normalized = status.toLowerCase();
+    final normalized = _normalizedStatus(status);
 
     Color bg;
     Color fg;
 
-    if (normalized == 'in progress' || normalized == 'ongoing' || normalized == 'being validated') {
+    if (_isInProgressStatus(normalized)) {
       bg = const Color(0xFFE8EDFF);
       fg = const Color(0xFF4A66E8);
-    } else if (normalized == 'resolved' || normalized == 'completed') {
+    } else if (_isResolvedStatus(normalized)) {
       bg = const Color(0xFFE6F5E0);
       fg = const Color(0xFF5BAA37);
     } else {
